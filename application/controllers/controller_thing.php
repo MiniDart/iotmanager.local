@@ -4,9 +4,9 @@
  * Created by PhpStorm.
  * User: Sergey
  * Date: 10.11.2016
- * Time: 23:18
+ * Time: 23:32
  */
-class Controller_404 extends Controller
+class Controller_thing extends Controller
 {
 
     function action_index()

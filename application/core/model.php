@@ -9,5 +9,6 @@
 abstract class Model
 {
     abstract public function get_data();
+    abstract public function set_data($file);
 
 }

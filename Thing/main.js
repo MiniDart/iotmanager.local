@@ -11,20 +11,24 @@ $(".add").on("click",function () {
 });
 var thing={};
 $("#create").on("click",function () {
-    $(".characteristics").each(function (index) {
-        if (index==0){
+    $(".characteristics").each(function (index,element) {
+        if (element.name=="id"){
             thing.id=this.value;
         }
-        else if (index==1){
+        else if (element.name=="name"){
             thing.name=this.value;
         }
-        else if (index==2){
-            thing.group=this.value;
+        else if (element.name=="thingGroup"){
+            thing.thingGroup=this.value;
         }
         else {
-            thing["n" + index] = this.value;
+            thing["action_" + index] = this.value;
         }
     });
     var file=JSON.stringify(thing);
-    alert(file);
+    $.post("/newthing",{new_thing:file},onAjaxSuccess);
 });
+function onAjaxSuccess(data) {
+    alert(data);
+    console.log(data);
+}

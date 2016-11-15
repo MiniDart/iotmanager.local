@@ -5,11 +5,18 @@ require_once 'core/controller.php';
 require_once 'core/route.php';
 error_reporting (E_ALL);
 // Константы:
-
 define ('DIRSEP', DIRECTORY_SEPARATOR);
-// Узнаём путь до файлов сайта
+define('DB_NAME', 'iot');
+/** MySQL database username */
+define('DB_USER', 'miniDart');
+/** MySQL database password */
+define('DB_PASSWORD', '441511');
+/** MySQL hostname */
+define('DB_HOST', 'localhost:3306');
+define('CSS_PATH', 'application/views/css/');
+define('JS_PATH','application/views/js/' );
 $site_path = realpath(dirname(__FILE__) . DIRSEP . '..' . DIRSEP) . DIRSEP;
-define ('site_path', $site_path);
+define ('SITE_PATH', $site_path);
 Route::start();
 /**
  * Created by PhpStorm.

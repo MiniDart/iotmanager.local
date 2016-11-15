@@ -3,14 +3,15 @@
 /**
  * Created by PhpStorm.
  * User: Sergey
- * Date: 10.11.2016
- * Time: 23:18
+ * Date: 14.11.2016
+ * Time: 13:56
  */
-class Controller_404 extends Controller
+class Controller_creatething extends Controller
 {
 
     function action_index()
     {
         // TODO: Implement action_index() method.
+        include 'Thing/thing.php';
     }
 }
