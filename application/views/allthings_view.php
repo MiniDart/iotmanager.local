@@ -1,2 +1,18 @@
-<h1>Вещи, которыми Вы можете упралять</h1>
-<p><?php echo $data[0]['thing_name']?></p>
+<header>
+    <h1>Доступные устройства</h1>
+</header>
+<section>
+    <div class="container">
+        <?php
+        foreach ($data as $row){
+            echo "<div class='item' data-id='$row[id]'>$row[thing_name]</div>";
+        }
+        ?>
+    </div>
+</section>
+<footer>
+    <form method="post" action="/thing">
+        <input type="text" name="thing_id">
+        <input type="submit">
+    </form>
+</footer>

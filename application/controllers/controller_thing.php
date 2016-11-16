@@ -12,5 +12,7 @@ class Controller_thing extends Controller
     function action_index()
     {
         // TODO: Implement action_index() method.
+        $data=$_POST["thing_id"];
+        $this->view->generate("thing_view.php","template_thing_view.php",$data );
     }
 }

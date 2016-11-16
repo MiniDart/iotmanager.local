@@ -12,6 +12,6 @@ class Controller_creatething extends Controller
     function action_index()
     {
         // TODO: Implement action_index() method.
-        include 'Thing/thing.php';
+        include 'thing_generator/thing.php';
     }
 }

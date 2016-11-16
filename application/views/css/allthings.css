@@ -1,4 +1,55 @@
+*{
+    margin: 0;
+    padding: 0;
+}
+html {
+    height: 100%;
+}
+body{
+    height: 100%;
+    background: rgba(192, 51, 28, 1);
+}
+header{
+    padding-top: 1px;
+    height: 100px;
+    border-bottom: 2px solid white;;
+}
 h1{
-    align-content: center;
-    color:red;
+    margin-top: 20px;
+    text-align: center;
+    color: white;
+}
+section {
+    height: 100%;
+}
+.container {
+    height: 100%;
+    width: 60%;
+    margin-left: auto;
+    margin-right: auto;
+    border-right: 2px solid white;
+    border-left: 2px solid white;
+
+}
+footer{
+    border-top: 2px solid white;
+    height: 50px;
+}
+.item{
+    height: 50px;
+    line-height: 50px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 35px;
+    background: white;
+    color: rgba(153, 40, 4, 1);
+    border: 1px solid rgba(192, 51, 28, 1);
+}
+.item:hover{
+    background: rgba(153, 40, 4, 1);
+    color: white;
+    border-bottom: 1px solid white;
+}
+form {
+    display: none;
 }
