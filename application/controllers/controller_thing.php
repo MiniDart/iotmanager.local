@@ -17,8 +17,16 @@ class Controller_thing extends Controller
     function action_index($param=null)
     {
         // TODO: Implement action_index() method.
+        if ($param==="getdata"){
+            $this->action_getdata();
+            return;
+        }
         if ($param!=null) $data=$this->model->get_data($param);
         else die("There is no param!");
         $this->view->generate("thing_view.php","template_thing_view.php",$data);
+    }
+    function action_getdata(){
+        $data=$this->model->get_current_data();
+        $this->view->generate("actionsdata_view.php","empty_view.php",$data );
     }
 }

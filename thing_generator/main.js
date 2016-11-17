@@ -29,6 +29,5 @@ $("#create").on("click",function () {
     $.post("/newthing",{new_thing:file},onAjaxSuccess);
 });
 function onAjaxSuccess(data) {
-    alert(data);
     console.log(data);
 }

@@ -16,7 +16,7 @@ class Model_thing extends Model
         $id=$param;
         $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
         if ($mysqli->connect_errno) {
-            echo "Не удалось подключиться к MySQL";
+            die("Не удалось подключиться к MySQL");
         }
         $query="SELECT * FROM actions_description WHERE thing_id=$id";
         if ($res=$mysqli->query($query)){
@@ -38,5 +38,22 @@ class Model_thing extends Model
     public function set_data($file=null)
     {
         // TODO: Implement set_data() method.
+    }
+    public function get_current_data(){
+        $actions=json_decode($_POST["actions"]);
+        $strActions=implode("','",$actions );
+        $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
+        if ($mysqli->connect_errno) {
+            die("Не удалось подключиться к MySQL");
+        }
+        $query="SELECT * FROM actions_data WHERE action_id in ('$strActions')";
+        if ($res=$mysqli->query($query)){
+            $data=$res->fetch_all(MYSQLI_ASSOC);
+            $res->close();
+        }
+        else die("Can't get results from database");
+        $mysqli->close();
+        $dataJson=json_encode($data);
+        return $dataJson;
     }
 }

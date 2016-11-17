@@ -47,3 +47,9 @@ h2{
     text-align: center;
     line-height: 30px;
 }
+select {
+    width: 150px;
+}
+#data_in_json{
+    display: none;
+}
