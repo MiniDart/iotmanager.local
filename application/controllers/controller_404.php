@@ -9,7 +9,7 @@
 class Controller_404 extends Controller
 {
 
-    function action_index()
+    function action_index($param=null)
     {
         // TODO: Implement action_index() method.
     }

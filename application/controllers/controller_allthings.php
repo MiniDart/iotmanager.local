@@ -14,7 +14,7 @@ class Controller_allthings extends Controller
         $this->model=new Model_allthings();
     }
 
-    function action_index()
+    function action_index($param=null)
     {
         // TODO: Implement action_index() method.
         $data=$this->model->get_data();

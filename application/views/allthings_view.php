@@ -5,14 +5,10 @@
     <div class="container">
         <?php
         foreach ($data as $row){
-            echo "<div class='item' data-id='$row[id]'>$row[thing_name]</div>";
+            echo "<a href='thing/index/$row[id]'><div class='item' data-id='$row[id]'>$row[thing_name]</div></a>";
         }
         ?>
     </div>
 </section>
 <footer>
-    <form method="post" action="/thing">
-        <input type="text" name="thing_id">
-        <input type="submit">
-    </form>
 </footer>

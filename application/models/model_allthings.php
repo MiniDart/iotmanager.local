@@ -9,7 +9,7 @@
 class Model_allthings extends Model
 {
 
-    public function get_data()
+    public function get_data($param=null)
     {
         // TODO: Implement get_data() method.
         $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
@@ -28,7 +28,7 @@ class Model_allthings extends Model
 
     }
 
-    public function set_data($file)
+    public function set_data($file=null)
     {
         // TODO: Implement set_data() method.
     }

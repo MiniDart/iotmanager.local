@@ -12,6 +12,7 @@ class Route
     {
         $controller_name = 'allthings';
         $action_name = 'index';
+        $param=null;
 
         $routes = explode('/', $_SERVER['REQUEST_URI']);
         
@@ -23,6 +24,10 @@ class Route
         if ( !empty($routes[2]) )
         {
             $action_name = $routes[2];
+        }
+        if ( !empty($routes[3]) )
+        {
+            $param = $routes[3];
         }
         
         $model_name = 'Model_'.$controller_name;
@@ -51,7 +56,7 @@ class Route
 
         if(method_exists($controller, $action))
         {
-            $controller->$action();
+            $controller->$action($param);
         }
         else{
             Route::ErrorPage404();

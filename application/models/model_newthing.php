@@ -8,13 +8,14 @@
  */
 class Model_newthing extends Model
 {
-    public function get_data()
+    public function get_data($param=null)
     {
         // TODO: Implement get_data() method.
     }
 
-    public function set_data($file)
+    public function set_data($file=null)
     {
+        if ($file==null) die("There is no file!");
         // TODO: Implement set_data() method.
         $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
         if ($mysqli->connect_errno) {
@@ -35,8 +36,9 @@ class Model_newthing extends Model
                
             }
         }
-        $t=time();
+        //заплатка
         $mysqli->query("INSERT INTO actions_data (action_id,action_date,action_value) VALUES (1,curtime(),'Hello world!')");
+        //
         $mysqli->close();
 
     }

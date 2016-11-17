@@ -53,3 +53,6 @@ footer{
 form {
     display: none;
 }
+a {
+    text-decoration: none;
+}

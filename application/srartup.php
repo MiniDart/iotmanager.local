@@ -17,6 +17,7 @@ define('CSS_PATH', 'application/views/css/');
 define('JS_PATH','application/views/js/' );
 $site_path = realpath(dirname(__FILE__) . DIRSEP . '..' . DIRSEP) . DIRSEP;
 define ('SITE_PATH', $site_path);
+define('DOMAIN_NAME',"http://iotmanager.local/");
 Route::start();
 /**
  * Created by PhpStorm.
