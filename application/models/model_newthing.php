@@ -19,7 +19,7 @@ class Model_newthing extends Model
         // TODO: Implement set_data() method.
         $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
         if ($mysqli->connect_errno) {
-            echo "Не удалось подключиться к MySQL: (" . $mysqli->connect_errno . ") " . $mysqli->connect_error;
+            die("Can't connect database!!!");
         }
         $mysqli->query("INSERT INTO things VALUES ('$file[id]','$file[name]','$file[thingGroup]')");
         foreach ($file as $key=>$value){
