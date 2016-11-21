@@ -6,7 +6,7 @@
  * Date: 20.11.2016
  * Time: 14:37
  */
-class Model_upgradeparams extends Model
+class Model_upgradeactionsdata extends Model
 {
 
     public function get_data($param = null)
@@ -19,12 +19,13 @@ class Model_upgradeparams extends Model
         // TODO: Implement set_data() method.
         if ($file==null) {
             echo "There is no file!";
-            return;
+            return false;
         }
         // TODO: Implement set_data() method.
         $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
         if ($mysqli->connect_errno) {
-            die("Can't connect database!!!");
+            echo "Can't connect database!!!";
+            return false;
         }
         foreach ($file as $key=>$value){
             if ($key==="thing_id") continue;
@@ -35,11 +36,13 @@ class Model_upgradeparams extends Model
             }
             else {
                 echo "Can't get results from database in upgradeparams";
-                return;
+                $mysqli->close();
+                return false;
             }
             $action_id=(int)$data[0][0];
             $mysqli->query("INSERT INTO actions_data(action_id, action_value, action_date) VALUES ('$action_id','$value', NOW())");
         }
         $mysqli->close();
+        return true;
     }
 }

@@ -41,17 +41,23 @@ class Model_thing extends Model
     }
     public function get_current_data(){
         $actions=json_decode($_POST["actions"]);
-        $strActions=implode("','",$actions );
+        $strActions=implode(",",$actions );
         $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
         if ($mysqli->connect_errno) {
-            die("Не удалось подключиться к MySQL");
+            echo "Can't connect to database in Model_thing->get_current_data()";
+            return false;
         }
-        $query="SELECT * FROM actions_data WHERE action_id in ('$strActions')";
+        $query="SELECT * FROM actions_data WHERE action_id in ($strActions) AND action_date=(SELECT MAX(action_date) FROM actions_data
+                WHERE action_id in ($strActions))";
         if ($res=$mysqli->query($query)){
             $data=$res->fetch_all(MYSQLI_ASSOC);
             $res->close();
         }
-        else die("Can't get results from database");
+        else {
+            echo "Can't get results from database in Model_thing->get_current_data()";
+            $mysqli->close();
+            return false;
+        };
         $mysqli->close();
         $dataJson=json_encode($data);
         return $dataJson;

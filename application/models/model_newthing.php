@@ -21,6 +21,20 @@ class Model_newthing extends Model
         if ($mysqli->connect_errno) {
             die("Can't connect database!!!");
         }
+        $query="SELECT COUNT(id) FROM things WHERE id=$file[id]";
+        if ($res=$mysqli->query($query)){
+            $data=$res->fetch_all();
+            $res->close();
+        }
+        else {
+            echo "Can't get results from database in upgradeparams";
+            return;
+        }
+        if ($data[0][0]!=="0"){
+            echo "Thing already exist!";
+            $mysqli->close();
+            return;
+        }
         $mysqli->query("INSERT INTO things VALUES ('$file[id]','$file[name]','$file[thingGroup]')");
         foreach ($file as $key=>$value){
             if (strripos($key, "action_")===0){
@@ -36,9 +50,6 @@ class Model_newthing extends Model
                
             }
         }
-        //заплатка
-        $mysqli->query("INSERT INTO actions_data (action_id,action_date,action_value) VALUES (1,curtime(),'Hello world!')");
-        //
         $mysqli->close();
 
     }

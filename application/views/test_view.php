@@ -5,4 +5,4 @@
  * Date: 12.11.2016
  * Time: 16:17
  */
-echo var_dump($data);
+echo "Thing with id=$data[id], was created";
