@@ -26,6 +26,20 @@ function onAjaxSuccess(data) {
     for (var i=0;i<data.length;i++){
         $("#"+data[i]['action_id']+" .output").text(data[i]['action_value'])
     }
-
 }
-console.log("Text in #data_in_json"+$("#data_in_json").text())
+
+//Order for device
+$("input[type='submit']").on('click',function (e) {
+    var action_id=this.getAttribute('name').substr(7);
+    var input=$("[name='input_"+action_id+"']");
+    var value=input.val();
+    input.val("");//look here, it's temporary!!!!!!!!!!!!!!!
+    var arr={};
+    arr['action_id']=action_id;
+    arr['value']=value;
+    $.post("setaction",{newData:JSON.stringify(arr)},function (data) {
+        console.log(data);
+        $.post("getdata",{actions:strJson},onAjaxSuccess,'json');
+
+    })
+});

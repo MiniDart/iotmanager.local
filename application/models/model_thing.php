@@ -57,9 +57,29 @@ class Model_thing extends Model
             echo "Can't get results from database in Model_thing->get_current_data()";
             $mysqli->close();
             return false;
-        };
+        }
         $mysqli->close();
         $dataJson=json_encode($data);
         return $dataJson;
+    }
+    public function get_upgrade_device_data(){
+        $param=json_decode($_POST['newData'],true);
+        $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
+        if ($mysqli->connect_errno) {
+            echo "Can't connect to database in Model_thing->get_upgrade_device_data()";
+            return false;
+        }
+        $query="SELECT thing_id,action_name FROM actions_description WHERE id=$param[action_id]";
+        if ($res=$mysqli->query($query)){
+            $data=$res->fetch_all(MYSQLI_ASSOC);
+            $res->close();
+        }
+        else {
+            echo "Can't get results from database in Model_thing->get_upgrade_device_data()";
+            $mysqli->close();
+            return false;
+        }
+        $mysqli->close();
+        return json_encode(array("device_id"=>$data[0]['thing_id'],"name"=>$data[0]['action_name'],"value"=>$param['value']));
     }
 }

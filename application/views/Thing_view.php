@@ -14,7 +14,7 @@
                 if ($value['format']=='list'&&$value['list_content']!=null){
                     $list_values=explode(":",$value['list_content'] );
                     echo "<p>Выберите режим работы:</p>";
-                    echo "<select name='list_$value[id]'>";
+                    echo "<select name='input_$value[id]'>";
                     foreach ($list_values as $l_v){
                      echo "<option>$l_v</option>";
                     }
@@ -24,7 +24,7 @@
                     echo "<p>Введите новое значение параметра:</p>";
                     echo "<input type='text' name='input_$value[id]'></br>";
                 }
-                echo "<input type='submit' value='Установить'>";
+                echo "<input type='submit' name='submit_$value[id]' value='Установить'>";
             }
             echo "</div>";
 
