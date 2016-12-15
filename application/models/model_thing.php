@@ -20,16 +20,21 @@ class Model_thing extends Model
         }
         $query="SELECT * FROM actions_description WHERE thing_id=$id";
         if ($res=$mysqli->query($query)){
-            $data=$res->fetch_all(MYSQLI_ASSOC);
+            $data['actions']=$res->fetch_all(MYSQLI_ASSOC);
             $res->close();
         }
         else die("Can't get results from database");
         $query="SELECT * FROM things WHERE id=$id";
         if ($res=$mysqli->query($query)){
-            $data['things']=$res->fetch_all(MYSQLI_ASSOC)[0];
+            $data['thing']=$res->fetch_all(MYSQLI_ASSOC)[0];
             $res->close();
         }
         else die("Can't get results from database");
+        $query="SELECT * FROM support_actions WHERE thing_id=$id";
+        if ($res=$mysqli->query($query)){
+            $data['support_actions']=$res->fetch_all(MYSQLI_ASSOC);
+            $res->close();
+        }
         $mysqli->close();
         return $data;
 

@@ -28,7 +28,7 @@ function onAjaxSuccess(data) {
     }
 }
 
-//Order for device
+//Управление устройством
 $("input[type='submit']").on('click',function (e) {
     var action_id=this.getAttribute('name').substr(7);
     var input=$("[name='input_"+action_id+"']");
