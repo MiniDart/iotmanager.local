@@ -56,22 +56,26 @@ class Model_newthing extends Model
                     $query="INSERT INTO action_range(action_id,item,active_actions,color) VALUES ('$action_id','$item[item]','$active_actions','$color')";
                     $mysqli->query($query);
                 }
-                foreach ($action['support'] as $support_action){
-                    $is_changeable=$support_action['isChangeable']=="true"?true:false;
-                    $range=json_encode($support_action['range']);
-                    $is_need_statistics=$support_action['isNeedStatistics']=="true"?true:false;
-                    $query="INSERT INTO support_actions(action_owner_id,action_name,is_changeable,format,description,submit_name,action_range,is_need_statistics,thing_id) VALUES ('$action_id','$support_action[name]','$is_changeable','$support_action[format]','$support_action[description]','$support_action[submitName]','$range','$is_need_statistics','$file[id]')";
-                    $mysqli->query($query);
-                    $action_id=$mysqli->insert_id;
-                    foreach ($support_action['range'] as $item){
-                        $color=isset($item['color'])?$item['color']:null;
-                        $disactivate=isset($item['disactivate'])?$item['disactivate']:null;
-                        $explanation=isset($item['explanation'])?$item['explanation']:null;
-                        $query="INSERT INTO support_action_range(action_id,item,disactivate,color,explanation) VALUES ('$action_id','$item[item]','$disactivate','$color','$explanation')";
-                        $mysqli->query($query);
-                    }
+               if ($is_supported) {
+                   foreach ($action['support'] as $support_action) {
+                       $is_changeable = $support_action['isChangeable'] == "true" ? true : false;
+                       $is_need_statistics = $support_action['isNeedStatistics'] == "true" ? true : false;
+                       if (isset($support_action['isDisactivator'])) $is_disactivator=$support_action['isDisactivator']=="true"?true:false;
+                       else $is_disactivator=false;
+                       $is_individual=$support_action['isIndividual']=="true"?true:false;
+                       $query = "INSERT INTO support_actions(action_owner_id,action_name,is_changeable,format,description,submit_name,is_need_statistics,thing_id,is_individual,is_disactivator) VALUES ('$action_id','$support_action[name]','$is_changeable','$support_action[format]','$support_action[description]','$support_action[submitName]','$is_need_statistics','$file[id]','$is_individual','$is_disactivator')";
+                       $mysqli->query($query);
+                       $support_action_id = $mysqli->insert_id;
+                       foreach ($support_action['range'] as $item) {
+                           $color = isset($item['color']) ? $item['color'] : null;
+                           $disactivate = isset($item['disactivate']) ? $item['disactivate'] : null;
+                           $explanation = isset($item['explanation']) ? $item['explanation'] : null;
+                           $query = "INSERT INTO support_action_range(action_id,item,disactivate,color,explanation) VALUES ('$support_action_id','$item[item]','$disactivate','$color','$explanation')";
+                           $mysqli->query($query);
+                       }
 
-                }
+                   }
+               }
             }
     }
         $mysqli->close();

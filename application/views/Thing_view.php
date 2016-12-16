@@ -1,11 +1,12 @@
 <header>
-    <h1><?php echo $data['things']['thing_name']?></h1>
+    <h1><?php echo $data['thing']['thing_name']?></h1>
 </header>
 <section>
     <div class="container">
         <?php
+        /*
         foreach ($data as $key=>$value){
-            if ($key==='things') continue;
+            if ($key==='thing') continue;
             echo "<div class='item' id='$value[id]' data-format='$value[format]' >
                 <h2>$value[action_name]</h2>
                 <p>Текущее значение:</p>
@@ -29,6 +30,7 @@
             echo "</div>";
 
         }
+        */
         ?>
     </div>
 </section>
