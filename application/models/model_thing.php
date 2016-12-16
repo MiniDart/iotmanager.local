@@ -18,23 +18,12 @@ class Model_thing extends Model
         if ($mysqli->connect_errno) {
             die("Не удалось подключиться к MySQL");
         }
-        $query="SELECT * FROM actions_description WHERE thing_id=$id";
+        $query="SELECT creation_line FROM things WHERE id=$id";
         if ($res=$mysqli->query($query)){
-            $data['actions']=$res->fetch_all(MYSQLI_ASSOC);
+            $data=$res->fetch_all(MYSQLI_ASSOC)[0]['creation_line'];
             $res->close();
         }
         else die("Can't get results from database");
-        $query="SELECT * FROM things WHERE id=$id";
-        if ($res=$mysqli->query($query)){
-            $data['thing']=$res->fetch_all(MYSQLI_ASSOC)[0];
-            $res->close();
-        }
-        else die("Can't get results from database");
-        $query="SELECT * FROM support_actions WHERE thing_id=$id";
-        if ($res=$mysqli->query($query)){
-            $data['support_actions']=$res->fetch_all(MYSQLI_ASSOC);
-            $res->close();
-        }
         $mysqli->close();
         return $data;
 

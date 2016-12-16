@@ -17,8 +17,7 @@ class Controller_newthing extends Controller
     function action_index($param=null)
     {
         // TODO: Implement action_index() method.
-        $new_thing=$_POST['new_thing'];
-        $data=json_decode($new_thing,true);
+        $data=$_POST['new_thing'];
         $this->model->set_data($data);
         $this->view->generate("test_view.php","empty_view.php",$data);
     }

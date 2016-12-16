@@ -2,12 +2,13 @@
  * Created by Sergey on 16.11.2016.
  */
 //делаем заглавные буквы
-$('h1,h2').each(function (index, element) {
+/*$('h1,h2').each(function (index, element) {
     var text=element.innerHTML;
     var l=text[0].toUpperCase();
     element.innerHTML=l+text.substring(1);
-});
-
+});*/
+var dataInJson=$("#data_in_json").html();
+var device=JSON.parse(dataInJson);
 //получаем action_id
 var actionList=[];
 $(".item").each(function (index, element) {
