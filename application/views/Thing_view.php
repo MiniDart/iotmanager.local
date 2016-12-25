@@ -1,5 +1,5 @@
 <header>
-    <h1><?php echo $data['thing']['thing_name']?></h1>
+    <h1></h1>
 </header>
 <section>
     <div class="container">
@@ -37,6 +37,5 @@
 <footer>
     
 </footer>
-<?php 
-$dataJson=json_encode($data);
-echo "<p id='data_in_json'>$dataJson</p>"?>
+<?php
+echo "<p id='data_in_json'>".$data."</p>"?>

@@ -64,9 +64,11 @@ class Model_newthing extends Model
                 $action_range_count=count($action_range);
                 for ($m=0;$m<$action_range_count;$m++){
                     $item=$action_range[$m];
+                    $range_from=isset($item['from'])?$item['from']:null;
+                    $range_to=isset($item['to'])?$item['to']:null;
                     $active_actions=isset($item['active_actions'])?$item['active_actions']:null;
                     $color=isset($item['color'])?$item['color']:null;
-                    $query="INSERT INTO action_range(action_id,item,active_actions,color) VALUES ('$action_id','$item[item]','$active_actions','$color')";
+                    $query="INSERT INTO action_range(action_id,item_name,range_from,range_to,active_actions,color) VALUES ('$action_id','$item[name]','$range_from','$range_to','$active_actions','$color')";
                     $mysqli->query($query);
                     $action_range_id=$mysqli->insert_id;
                     $creation_line['actionGroups'][$i]['actions'][$l]['range'][$m]['id']=$action_range_id;
@@ -92,7 +94,9 @@ class Model_newthing extends Model
                            $color = isset($support_item['color']) ? $support_item['color'] : null;
                            $disactivate = isset($support_item['disactivate']) ? $support_item['disactivate'] : null;
                            $explanation = isset($support_item['explanation']) ? $support_item['explanation'] : null;
-                           $query = "INSERT INTO support_action_range(action_id,item,disactivate,color,explanation) VALUES ('$support_action_id','$support_item[item]','$disactivate','$color','$explanation')";
+                           $range_from=isset($support_item['from'])?$support_item['from']:null;
+                           $range_to=isset($support_item['to'])?$support_item['to']:null;
+                           $query = "INSERT INTO support_action_range(action_id,item_name,range_from,range_to,disactivate,color,explanation) VALUES ('$support_action_id','$support_item[name]','$range_from','$range_to','$disactivate','$color','$explanation')";
                            $mysqli->query($query);
                            $support_action_range_id=$mysqli->insert_id;
                            $creation_line['actionGroups'][$i]['actions'][$l]['support'][$n]['range'][$k]['id']=$support_action_range_id;
