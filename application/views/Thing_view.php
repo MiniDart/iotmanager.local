@@ -1,8 +1,7 @@
 <header>
-    <h1></h1>
+    <h1 class="device_name"></h1>
 </header>
-<section>
-    <div class="container">
+<section class="container">
         <?php
         /*
         foreach ($data as $key=>$value){
@@ -32,7 +31,6 @@
         }
         */
         ?>
-    </div>
 </section>
 <footer>
     

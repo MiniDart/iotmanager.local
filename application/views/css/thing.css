@@ -22,33 +22,12 @@ h1{
 section {
     height: 100%;
 }
-.container {
-    height: 100%;
-    width: 60%;
-    margin-left: auto;
-    margin-right: auto;
-    border-right: 2px solid white;
-    border-left: 2px solid white;
-    color: white;
-
-}
 footer{
     border-top: 2px solid white;
     height: 50px;
 }
-.item{
-    border-bottom: 2px solid white;
-}
 h2{
     text-align: center;
-}
-.output {
-    height: 30px;
-    text-align: center;
-    line-height: 30px;
-}
-select {
-    width: 150px;
 }
 #data_in_json{
     display: none;
