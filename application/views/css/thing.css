@@ -26,7 +26,7 @@ footer{
     border-top: 2px solid white;
     height: 50px;
 }
-h2{
+h2,h3{
     text-align: center;
 }
 #data_in_json{

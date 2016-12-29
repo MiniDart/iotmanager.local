@@ -135,6 +135,36 @@ class Action{
         this.description = null;
         if ("description" in data) this.description = data.description;
     }
+    draw(){
+        let actionDom=$("<div><h3>"+this.name+"</h3></div>");
+        if (this.description!=null) actionDom.append("<div class='description'>"+this.description+"</div>");
+        actionDom.append("<p>Текущее значение:</p><div class='value'></div>");
+        if (this.isChangeable){
+            let from=null;
+            let to=null;
+            if (this.range!=null) {
+                from=this.range[0].from;
+                to=this.range[0].to;
+            }
+            switch (this.format){
+                case "number":
+                    actionDom.append("<p>Введите новое значение"+(from||to?" в диапозоне":"")+(from?" от "+from:"")+(to?" до"+to:"")+":</p>");
+                    actionDom.append("<input name='newValue' type='text'>");
+                    break;
+                case "list":
+                    actionDom.append("<p>Выберите новое значение:</p>");
+                    let selectDom=$("<select name='newValue'></select>");
+                    for (let i=0;i<this.range.length;i++){
+                        selectDom.append($("<option value='"+i+"'>"+this.range[i].name+"</option>"));
+                    }
+                    actionDom.append(selectDom);
+                    break;
+                case "date":
+                    break;
+            }
+            return actionDom;
+        }
+    }
 
 }
 
@@ -154,7 +184,15 @@ class SupportAction extends Action{
 
     }
     draw(){
-
+        let supportActionDom=super.draw();
+        supportActionDom.attr({
+            "class":"supportAction",
+            "id":"supportAction_"+this.id
+        });
+        if (this.isChangeable&&this.isIndividual){
+            supportActionDom.append("<div class='submit'><input type='submit' value='"+(this.submitName?this.submitName:"Отправить")+"'></div>")
+        }
+        return supportActionDom;
     }
 }
 
@@ -178,27 +216,17 @@ class MainAction extends Action{
             this.supportActions=actions;
         }
     }
-    //look here!!!!!!!!!!!!-------------------------------------------------------
     draw(){
-        let mainActionDom=$("<div class='mainAction' id='mainAction_"+this.id+"'>" +
-            "<h3>"+this.name+"</h3></div>");
-        if (this.description!=null) mainActionDom.append("<div class='description'>"+this.description+"</div>");
-        mainActionDom.append("<div class='value'></div>");
+        let mainActionDom=super.draw();
+        mainActionDom.attr({
+            "class":"mainAction",
+            "id":"mainAction_"+this.id
+        });
+        mainActionDom.append("<div class='support'></div>");
         if (this.isChangeable){
-            let from=null;
-            let to=null;
-            if (this.range!=null) {
-                from=this.range[0].from;
-                to=this.range[0].to;
-            }
-            switch (this.format){
-                case "number":
-                    mainActionDom.append("<p>Введите новое значение"+(from||to?" в диапозоне":"")+(from?" от "+from:"")+(to?" до"+to:"")+":</p>");
-                    break;
-                case "list":
-                    break;
-            }
+            mainActionDom.append("<div class='submit'><input type='submit' value='"+(this.submitName?this.submitName:"Отправить")+"'></div>")
         }
+        return mainActionDom;
     }
 }
 
@@ -220,6 +248,7 @@ class ActionGroup{
         if (this.name!=null){
             actionGroupDom.append("<h2>"+this.name+"</h2>");
         }
+        actionGroupDom.append("<div class='actionContainer'></div>")
         return actionGroupDom;
 
     }
@@ -247,7 +276,7 @@ class Device{
 class Theme{
     constructor(){
         this.name="Simple";
-        this.allLines=1;
+        this.allLines=2;
         this.algorithm="simple";
         this.rules=null;
     }
@@ -281,13 +310,79 @@ class DrawManager{
     }
     simpleAlgorithm(){
         let deviceDom=this.device.draw();
+        let containerWidth=document.documentElement.clientWidth-200;
         deviceDom.css({
-            "width":"900px",
+            "width":containerWidth+"px",
             "height":"100%",
             "margin-left":"auto",
             "margin-right":"auto",
-            "backgroundColor":"black"
+            "border-left":"1px solid white",
+            "border-right":"1px solid white",
+            "color":"white",
+            "font-size":"20px"
         });
+        let actionGroups=this.device.actionGroups;
+
+        for (let i=0;i<actionGroups.length;i++){
+            let actionGroupDom=actionGroups[i].draw();
+            actionGroupDom.find("h2").css("marginBottom","30px");
+            let actionContainerDom=actionGroupDom.find("div.actionContainer");
+            actionContainerDom.css({
+                "display":"flex",
+                "flexWrap":"wrap",
+                "justifyContent":"space-around",
+                "width":"100%"
+            });
+            if (actionGroups.length!=1){
+                actionGroupDom.css("border","1px solid black");
+            }
+            let actions=actionGroups[i].actions;
+            let actionWidth=Math.floor(containerWidth/this.activeTheme.allLines)-this.activeTheme.allLines*8;
+            for (let l=0;l<actions.length;l++){
+                let actionDom=actions[l].draw();
+                actionDom.css({
+                    "width":actionWidth+"px",
+                    "border":"1px solid white",
+                    "padding":"5px"
+                });
+                actionDom.find("div.value").css({
+                    "height":"30px",
+                    "background":"grey"
+                });
+                let supportActions=actions[l].supportActions;
+                if (supportActions!=null) {
+                    let supportContainerDom=actionDom.find("div.support");
+                    supportContainerDom.css({
+                        "display":"flex",
+                        "flexWrap":"wrap",
+                        "justifyContent":"space-around",
+                        "border":"1px solid grey"
+                    });
+                    let supportActionWidth=Math.floor(actionWidth/supportActions.length);
+                    if (supportActionWidth<250) {
+                        let w = Math.floor(actionWidth / 250);
+                        supportActionWidth = Math.floor(actionWidth / w)-w*8;
+                    }
+                    else supportActionWidth-=supportActions.length*8;
+                    alert(supportActionWidth);
+                    for (let m = 0; m < supportActions.length; m++) {
+                        let supportActionDom = supportActions[m].draw();
+                        supportActionDom.css({
+                            "width": supportActionWidth + "px",
+                            "border": "1px solid grey",
+                            "padding":"5px"
+                        });
+                        supportActionDom.find("div.value").css({
+                            "height": "30px",
+                            "background": "grey"
+                        });
+                        supportContainerDom.append(supportActionDom);
+                    }
+                }
+                actionContainerDom.append(actionDom);
+            }
+            deviceDom.append(actionGroupDom);
+        }
         let section=$("section.container");
         section.append(deviceDom);
 
