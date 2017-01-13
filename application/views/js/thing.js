@@ -154,6 +154,7 @@ class Action{
                 case "list":
                     actionDom.append("<p>Выберите новое значение:</p>");
                     let selectDom=$("<select name='newValue'></select>");
+                    selectDom.append($("<option value='-1'>none</option>"));
                     for (let i=0;i<this.range.length;i++){
                         selectDom.append($("<option value='"+i+"'>"+this.range[i].name+"</option>"));
                     }
@@ -169,20 +170,22 @@ class Action{
 }
 
 class SupportAction extends Action{
-    constructor(data,owner){
-        super(data,owner);
-        this.isDisactivator=data.isDisactivator=="true";
-        this.isIndividual=data.isIndividual=="true";
-        this.range=null;
-            if ("range" in data) {
-                let r = [];
-                for (let i = 0; i < data.range.length; i++) {
-                    r.push(new SupportItem(data.range[i], this))
-                }
-                this.range = r;
+    constructor(data,owner) {
+        super(data, owner);
+        this.isDisactivator = data.isDisactivator == "true";
+        this.isIndividual = data.isIndividual == "true";
+        this.range = null;
+        if ("range" in data) {
+            let r = [];
+            for (let i = 0; i < data.range.length; i++) {
+                r.push(new SupportItem(data.range[i], this))
             }
-
+            this.range = r;
+        }
+        this.active = null;
+        if ("active" in data) this.active = data.active;
     }
+
     draw(){
         let supportActionDom=super.draw();
         supportActionDom.attr({
@@ -226,6 +229,12 @@ class MainAction extends Action{
         if (this.isChangeable){
             mainActionDom.append("<div class='submit'><input type='submit' value='"+(this.submitName?this.submitName:"Отправить")+"'></div>")
         }
+        let self=this;
+        mainActionDom.find("[name=newValue]").change(function (event) {
+            let val=$(this).val();
+            let textVal=$(this).find("[value="+val+"]").text();
+            alert(self.name);
+        });
         return mainActionDom;
     }
 }
@@ -302,7 +311,7 @@ class DrawManager{
             }
         }
         this[this.activeTheme.algorithm+"Algorithm"]();
-        $('h1,h2,h3').each(function (index, element) {
+        $('h1,h2,h3,.description').each(function (index, element) {
             var text=element.innerHTML;
             var l=text[0].toUpperCase();
             element.innerHTML=l+text.substring(1);
@@ -351,33 +360,11 @@ class DrawManager{
                 });
                 let supportActions=actions[l].supportActions;
                 if (supportActions!=null) {
-                    let supportContainerDom=actionDom.find("div.support");
-                    supportContainerDom.css({
-                        "display":"flex",
-                        "flexWrap":"wrap",
-                        "justifyContent":"space-around",
-                        "border":"1px solid grey"
-                    });
-                    let supportActionWidth=Math.floor(actionWidth/supportActions.length);
-                    if (supportActionWidth<250) {
-                        let w = Math.floor(actionWidth / 250);
-                        supportActionWidth = Math.floor(actionWidth / w)-w*8;
+                   let activeSupportActions=[];
+                    for (let m=0;m<supportActions.length;m++){
+                        if (supportActions[m].active==null) activeSupportActions.push(supportActions[m]);
                     }
-                    else supportActionWidth-=supportActions.length*8;
-                    alert(supportActionWidth);
-                    for (let m = 0; m < supportActions.length; m++) {
-                        let supportActionDom = supportActions[m].draw();
-                        supportActionDom.css({
-                            "width": supportActionWidth + "px",
-                            "border": "1px solid grey",
-                            "padding":"5px"
-                        });
-                        supportActionDom.find("div.value").css({
-                            "height": "30px",
-                            "background": "grey"
-                        });
-                        supportContainerDom.append(supportActionDom);
-                    }
+                    this.simpleSupportAlgorithm(activeSupportActions,actionDom,actionWidth);
                 }
                 actionContainerDom.append(actionDom);
             }
@@ -386,6 +373,35 @@ class DrawManager{
         let section=$("section.container");
         section.append(deviceDom);
 
+    }
+    simpleSupportAlgorithm(supportActions,actionDom,actionWidth){
+        let supportContainerDom=actionDom.find("div.support");
+        supportContainerDom.css({
+            "display":"flex",
+            "flexWrap":"wrap",
+            "justifyContent":"space-around",
+            "border":"1px solid grey",
+            "padding":"5px"
+        });
+        let supportActionWidth=Math.floor(actionWidth/supportActions.length);
+        if (supportActionWidth<250) {
+            let w = Math.floor(actionWidth / 250);
+            supportActionWidth = Math.floor(actionWidth / w)-w*12;
+        }
+        else supportActionWidth-=supportActions.length*12;
+        for (let m = 0; m < supportActions.length; m++) {
+            let supportActionDom = supportActions[m].draw();
+            supportActionDom.css({
+                "width": supportActionWidth + "px",
+                "border": "1px solid grey",
+                "padding":"5px"
+            });
+            supportActionDom.find("div.value").css({
+                "height": "30px",
+                "background": "grey"
+            });
+            supportContainerDom.append(supportActionDom);
+        }
     }
     rankSort(a,b){
         return (a.rank-b.rank);
