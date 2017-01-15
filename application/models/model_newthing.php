@@ -55,7 +55,9 @@ class Model_newthing extends Model
                 $is_supported=isset($action['support'][0]);
                 $is_changeable=$action['isChangeable']=="true"?true:false;
                 $is_need_statistics=$action['isNeedStatistics']=="true"?true:false;
-                $query="INSERT INTO actions_description(thing_id,action_name,format,is_changeable,action_group_id,description,submit_name,is_supported,is_need_statistics,rank) VALUES ('$file[id]','$action[name]','$action[format]','$is_changeable','$group_id','$action[description]','$action[submitName]','$is_supported','$is_need_statistics','$l')";
+                $submit_name=null;
+                if (isset($action['submitName'])) $submit_name=$action['submitName'];
+                $query="INSERT INTO actions_description(thing_id,action_name,format,is_changeable,action_group_id,description,submit_name,is_supported,is_need_statistics,rank) VALUES ('$file[id]','$action[name]','$action[format]','$is_changeable','$group_id','$action[description]','$submit_name','$is_supported','$is_need_statistics','$l')";
                 $mysqli->query($query);
                 $action_id=$mysqli->insert_id;
                 $creation_line['actionGroups'][$i]['actions'][$l]['id']=$action_id;
@@ -68,7 +70,9 @@ class Model_newthing extends Model
                     $range_to=isset($item['to'])?$item['to']:null;
                     $active_actions=isset($item['active_actions'])?$item['active_actions']:null;
                     $color=isset($item['color'])?$item['color']:null;
-                    $query="INSERT INTO action_range(action_id,item_name,range_from,range_to,active_actions,color) VALUES ('$action_id','$item[name]','$range_from','$range_to','$active_actions','$color')";
+                    $item_name=null;
+                    if (isset($item['name'])) $item_name=$item['name'];
+                    $query="INSERT INTO action_range(action_id,item_name,range_from,range_to,active_actions,color) VALUES ('$action_id','$item_name','$range_from','$range_to','$active_actions','$color')";
                     $mysqli->query($query);
                     $action_range_id=$mysqli->insert_id;
                     $creation_line['actionGroups'][$i]['actions'][$l]['range'][$m]['id']=$action_range_id;
@@ -83,7 +87,9 @@ class Model_newthing extends Model
                        if (isset($support_action['isDisactivator'])) $is_disactivator=$support_action['isDisactivator']=="true"?true:false;
                        else $is_disactivator=false;
                        $is_individual=$support_action['isIndividual']=="true"?true:false;
-                       $query = "INSERT INTO support_actions(action_owner_id,action_name,is_changeable,format,description,submit_name,is_need_statistics,thing_id,is_individual,is_disactivator) VALUES ('$action_id','$support_action[name]','$is_changeable','$support_action[format]','$support_action[description]','$support_action[submitName]','$is_need_statistics','$file[id]','$is_individual','$is_disactivator')";
+                       $support_submit_name=null;
+                       if (isset($support_action['submitName'])) $support_submit_name=$support_action['submitName'];
+                       $query = "INSERT INTO support_actions(action_owner_id,action_name,is_changeable,format,description,submit_name,is_need_statistics,thing_id,is_individual,is_disactivator) VALUES ('$action_id','$support_action[name]','$is_changeable','$support_action[format]','$support_action[description]','$support_submit_name','$is_need_statistics','$file[id]','$is_individual','$is_disactivator')";
                        $mysqli->query($query);
                        $support_action_id = $mysqli->insert_id;
                        $creation_line['actionGroups'][$i]['actions'][$l]['support'][$n]['id']=$support_action_id;
@@ -96,7 +102,9 @@ class Model_newthing extends Model
                            $explanation = isset($support_item['explanation']) ? $support_item['explanation'] : null;
                            $range_from=isset($support_item['from'])?$support_item['from']:null;
                            $range_to=isset($support_item['to'])?$support_item['to']:null;
-                           $query = "INSERT INTO support_action_range(action_id,item_name,range_from,range_to,disactivate,color,explanation) VALUES ('$support_action_id','$support_item[name]','$range_from','$range_to','$disactivate','$color','$explanation')";
+                           $support_item_name=null;
+                           if (isset($support_item['name'])) $support_item_name=$support_item['name'];
+                           $query = "INSERT INTO support_action_range(action_id,item_name,range_from,range_to,disactivate,color,explanation) VALUES ('$support_action_id','$support_item_name','$range_from','$range_to','$disactivate','$color','$explanation')";
                            $mysqli->query($query);
                            $support_action_range_id=$mysqli->insert_id;
                            $creation_line['actionGroups'][$i]['actions'][$l]['support'][$n]['range'][$k]['id']=$support_action_range_id;

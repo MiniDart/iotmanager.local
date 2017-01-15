@@ -47,6 +47,10 @@
  */
 
 //Описание сущностей----------------------------------------------------------------------------------
+function makeBigFirsLetter(word) {
+    let l=word[0].toUpperCase();
+    return l+word.substring(1);
+}
 class Item{
     constructor(data,owner){
         this.owner=owner;
@@ -107,16 +111,14 @@ class Item{
 class MainItem extends Item{
     constructor(data,owner){
         super(data,owner);
-        if ("activeActions" in data) this.activeActions=data.activeActions.split(",");
-        else this.activeActions=null;
     }
 }
 
 class SupportItem extends Item{
     constructor(data,owner){
         super(data,owner);
-        if ("isDisactivator" in data) this.isDisactivator=data.isDisactivator=="true";
-        else this.isDisactivator=false;
+        if ("isDeactivator" in data) this.isDeactivator=data.isDeactivator=="true";
+        else this.isDeactivator=false;
         if ("description" in data) this.description=data.description;
         else this.description=null;
     }
@@ -125,10 +127,11 @@ class SupportItem extends Item{
 class Action{
     constructor(data,owner) {
         this.owner = owner;
-        this.name = data.name;
+        this.name = makeBigFirsLetter(data.name);
         this.format = data.format;
         this.isChangeable = data.isChangeable == "true";
-        this.submitName = data.submitName;
+        this.submitName=null;
+        if ("submitName" in data) this.submitName = data.submitName;
         this.isNeedStatistics = data.isNeedStatistics == "true";
         this.rank = data.rank;
         this.id = data.id;
@@ -163,8 +166,8 @@ class Action{
                 case "date":
                     break;
             }
-            return actionDom;
         }
+        return actionDom;
     }
 
 }
@@ -229,12 +232,26 @@ class MainAction extends Action{
         if (this.isChangeable){
             mainActionDom.append("<div class='submit'><input type='submit' value='"+(this.submitName?this.submitName:"Отправить")+"'></div>")
         }
-        let self=this;
-        mainActionDom.find("[name=newValue]").change(function (event) {
-            let val=$(this).val();
-            let textVal=$(this).find("[value="+val+"]").text();
-            alert(self.name);
-        });
+        if (this.format=="list") {
+            let self=this;
+            mainActionDom.find("[name=newValue]").change(function (event) {
+                let val = $(this).val();
+                let textVal = $(this).find("[value=" + val + "]").text();
+                let supportActions=[];
+                for (let i=0;i<self.supportActions.length;i++){
+                    if (!self.supportActions[i].active){
+                        supportActions.push(self.supportActions[i]);
+                    }
+                    else {
+                        let activeItems=self.supportActions[i].active.split(":");
+                        if (activeItems.indexOf(textVal)!=-1) supportActions.push(self.supportActions[i]);
+                    }
+                }
+                let algorithm=drawManager.activeTheme.algorithm;
+                mainActionDom.find(".support").empty();
+                drawManager[algorithm+"SupportAlgorithm"](supportActions,mainActionDom,mainActionDom.width());
+            });
+        }
         return mainActionDom;
     }
 }
