@@ -25,9 +25,11 @@ class Controller_thing extends Controller
             $this->action_setaction();
             return;
         }
-        if ($param!=null) $data=$this->model->get_data($param);
+        if ($param!=null) {
+            $data=$this->model->get_data($param);
+            $this->view->generate("thing_view.php","template_thing_view.php",$data);
+        }
         else die("There is no param!");
-        $this->view->generate("thing_view.php","template_thing_view.php",$data);
     }
     function action_getdata(){
         $data=$this->model->get_current_data();

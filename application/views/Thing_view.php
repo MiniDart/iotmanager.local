@@ -36,4 +36,4 @@
     
 </footer>
 <?php
-echo "<p id='data_in_json'>".$data."</p>"?>
+echo "<p id='data_in_json' data-device='".$data."'></p>"?>

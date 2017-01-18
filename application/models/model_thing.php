@@ -34,27 +34,24 @@ class Model_thing extends Model
         // TODO: Implement set_data() method.
     }
     public function get_current_data(){
-        $actions=json_decode($_POST["actions"]);
-        $strActions=implode(",",$actions );
+        $device_id=$_POST["device_id"];
+        $curl=curl_init();
+        curl_setopt($curl, CURLOPT_URL,"http://localhost:3000/getactiondata");
+        curl_setopt($curl, CURLOPT_POST, 1);
+        curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query(array('device_id' => $device_id)));
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+        $server_output = curl_exec ($curl);
+        $currentActionsData=json_decode($server_output);
         $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
         if ($mysqli->connect_errno) {
-            echo "Can't connect to database in Model_thing->get_current_data()";
-            return false;
+            die("Не удалось подключиться к MySQL");
         }
-        $query="SELECT * FROM actions_data WHERE action_id in ($strActions) AND action_date=(SELECT MAX(action_date) FROM actions_data
-                WHERE action_id in ($strActions))";
-        if ($res=$mysqli->query($query)){
-            $data=$res->fetch_all(MYSQLI_ASSOC);
-            $res->close();
+        foreach ($currentActionsData['actions'] as $action){
+            
         }
-        else {
-            echo "Can't get results from database in Model_thing->get_current_data()";
-            $mysqli->close();
-            return false;
-        }
+        $query="";
         $mysqli->close();
-        $dataJson=json_encode($data);
-        return $dataJson;
+        return $server_output;
     }
     public function get_upgrade_device_data(){
         $param=json_decode($_POST['newData'],true);

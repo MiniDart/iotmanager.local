@@ -47,7 +47,7 @@
  */
 
 //Описание сущностей----------------------------------------------------------------------------------
-function makeBigFirsLetter(word) {
+function makeBigFirstLetter(word) {
     let l=word[0].toUpperCase();
     return l+word.substring(1);
 }
@@ -127,16 +127,17 @@ class SupportItem extends Item{
 class Action{
     constructor(data,owner) {
         this.owner = owner;
-        this.name = makeBigFirsLetter(data.name);
+        this.name = makeBigFirstLetter(data.name);
         this.format = data.format;
         this.isChangeable = data.isChangeable == "true";
         this.submitName=null;
-        if ("submitName" in data) this.submitName = data.submitName;
+        if ("submitName" in data) this.submitName = makeBigFirstLetter(data.submitName);
         this.isNeedStatistics = data.isNeedStatistics == "true";
         this.rank = data.rank;
         this.id = data.id;
         this.description = null;
-        if ("description" in data) this.description = data.description;
+        if ("description" in data) this.description = makeBigFirstLetter(data.description);
+        this.domElement=null;
     }
     draw(){
         let actionDom=$("<div><h3>"+this.name+"</h3></div>");
@@ -198,6 +199,7 @@ class SupportAction extends Action{
         if (this.isChangeable&&this.isIndividual){
             supportActionDom.append("<div class='submit'><input type='submit' value='"+(this.submitName?this.submitName:"Отправить")+"'></div>")
         }
+        this.domElement=supportActionDom;
         return supportActionDom;
     }
 }
@@ -252,6 +254,7 @@ class MainAction extends Action{
                 drawManager[algorithm+"SupportAlgorithm"](supportActions,mainActionDom,mainActionDom.width());
             });
         }
+        this.domElement=mainActionDom;
         return mainActionDom;
     }
 }
@@ -260,7 +263,7 @@ class ActionGroup{
     constructor(data,owner){
         this.owner=owner;
         this.name=null;
-        if ("name" in data) this.name=data.name;
+        if ("name" in data) this.name=makeBigFirstLetter(data.name);
         this.id=data.id;
         this.rank=data.rank;
         let actions=[];
@@ -268,13 +271,15 @@ class ActionGroup{
             actions.push(new MainAction(data.actions[i],this));
         }
         this.actions=actions;
+        this.domElement=null;
     }
     draw(){
         let actionGroupDom=$("<div class='actionGroup' id='actionGroup_"+this.id+"'></div>");
         if (this.name!=null){
             actionGroupDom.append("<h2>"+this.name+"</h2>");
         }
-        actionGroupDom.append("<div class='actionContainer'></div>")
+        actionGroupDom.append("<div class='actionContainer'></div>");
+        this.domElement=actionGroupDom;
         return actionGroupDom;
 
     }
@@ -283,7 +288,7 @@ class ActionGroup{
 class Device{
     constructor(data){
         this.id=data.id;
-        this.name=data.name;
+        this.name=makeBigFirstLetter(data.name);
         this.group=data.thingGroup;
         this.updateTime=data.updateTime;
         let actGroups=[];
@@ -291,13 +296,28 @@ class Device{
             actGroups.push(new ActionGroup(data.actionGroups[i],this));
         }
         this.actionGroups=actGroups;
+        this.domElement=null;
     }
     draw(){
-        return $("<div class='device' id='device_"+this.id+"'></div>");
+        let deviceDom=$("<div class='device' id='device_"+this.id+"'></div>");
+        this.domElement=deviceDom;
+        return deviceDom;
     }
-
-
+    updateOnTime(){
+        this.updateActionsValue();
+    }
+    updateActionsValue(){
+        let self=this;
+        $.post("getdata",{device_id:self.id},onAjaxSuccess,'json');
+        function onAjaxSuccess(data) {
+            console.log(data);
+            console.dir(data);
+        }
+    }
 }
+
+
+
 
 class Theme{
     constructor(){
@@ -315,6 +335,9 @@ class DrawManager{
         this.themes.push(new Theme());
         this.activeTheme=this.themes[0];
     }
+    start(){
+        this.device.updateOnTime();
+    }
     draw(){
         $("h1.device_name").text(this.device.name);
         let groups=this.device.actionGroups;
@@ -328,11 +351,6 @@ class DrawManager{
             }
         }
         this[this.activeTheme.algorithm+"Algorithm"]();
-        $('h1,h2,h3,.description').each(function (index, element) {
-            var text=element.innerHTML;
-            var l=text[0].toUpperCase();
-            element.innerHTML=l+text.substring(1);
-        });
     }
     simpleAlgorithm(){
         let deviceDom=this.device.draw();
@@ -363,11 +381,12 @@ class DrawManager{
                 actionGroupDom.css("border","1px solid black");
             }
             let actions=actionGroups[i].actions;
-            let actionWidth=Math.floor(containerWidth/this.activeTheme.allLines)-this.activeTheme.allLines*8;
+            let actionWidth=Math.floor(containerWidth/this.activeTheme.allLines)-this.activeTheme.allLines*12;
             for (let l=0;l<actions.length;l++){
                 let actionDom=actions[l].draw();
                 actionDom.css({
-                    "width":actionWidth+"px",
+                    "flex-basis":actionWidth+"px",
+                    "flex-grow":"1",
                     "border":"1px solid white",
                     "padding":"5px"
                 });
@@ -397,7 +416,6 @@ class DrawManager{
             "display":"flex",
             "flexWrap":"wrap",
             "justifyContent":"space-around",
-            "border":"1px solid grey",
             "padding":"5px"
         });
         let supportActionWidth=Math.floor(actionWidth/supportActions.length);
@@ -427,7 +445,7 @@ class DrawManager{
 
 
 //Начало работы программы---------------------------------------------------------------
-let dataFromJson=JSON.parse($("#data_in_json").html());
-let device=new Device(dataFromJson);
-let drawManager=new DrawManager(device);
+let dataFromJson=JSON.parse($("#data_in_json").get(0).dataset.device);
+let drawManager=new DrawManager(new Device(dataFromJson));
 drawManager.draw();
+drawManager.start();
