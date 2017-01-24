@@ -203,7 +203,32 @@ class SupportAction extends Action{
         });
         supportActionDom.find(".value").addClass("support");
         if (this.isChangeable&&this.isIndividual){
-            supportActionDom.append("<div class='submit'><input type='submit' value='"+(this.submitName?this.submitName:"Отправить")+"'></div>")
+            let submit=$("<div class='submit'><input type='submit' value='"+(this.submitName?this.submitName:"Отправить")+"'></div>");
+            let self=this;
+            submit.find("input").on("click",function (event) {
+                let device={};
+                device.id=self.owner.owner.owner.id;
+                device.actionGroups=[];
+                let actionGroup={};
+                actionGroup.name=self.owner.owner.name;
+                actionGroup.actions=[];
+                device.actionGroups.push(actionGroup);
+                let action={};
+                action.name=self.owner.name;
+                action.supportActions=[];
+                actionGroup.actions.push(action);
+                let supportAction={};
+                supportAction.id=self.id;
+                supportAction.name=self.name;
+                action.supportActions.push(supportAction);
+                if (self.format=="list"){
+                    let id=self.domElement.find(".newValue").val();
+                    let name=self.range.get(+id).name;
+                    supportAction.value=name;
+                }
+                $.post("setaction",{'newData':JSON.stringify(device)},self.owner.owner.owner.insertValuesInActions(),'json');
+            });
+            supportActionDom.append(submit);
         }
         supportActionDom.find(".newValue").addClass("support");
         this.domElement=supportActionDom;
@@ -239,9 +264,15 @@ class MainAction extends Action{
         });
         mainActionDom.find(".value").addClass("main");
         mainActionDom.find(".newValue").addClass("main");
-        mainActionDom.append("<div class='support'></div>");
+        if (this.supportActions!=null) {
+            mainActionDom.append("<div class='support'></div>");
+        }
         if (this.isChangeable){
-            mainActionDom.append("<div class='submit'><input type='submit' value='"+(this.submitName?this.submitName:"Отправить")+"'></div>")
+            let submit=$("<div class='submit'><input type='submit' value='"+(this.submitName?this.submitName:"Отправить")+"'></div>");
+            submit.find("input").on("click",function (event) {
+            });
+            mainActionDom.append(submit);
+
         }
         if (this.format=="list") {
             let self=this;
@@ -302,7 +333,7 @@ class Device{
         this.id=data.id;
         this.name=makeBigFirstLetter(data.name);
         this.group=data.thingGroup;
-        this.updateTime=data.updateTime;
+        this.updateTime=+data.updateTime*1000;
         this.actionGroups=new Map();
         for (let i=0;i<data.actionGroups.length;i++){
             this.actionGroups.set(data.actionGroups[i].id,new ActionGroup(data.actionGroups[i],this));
@@ -315,12 +346,16 @@ class Device{
         return deviceDom;
     }
     updateOnTime(){
-        this.updateActionsValue();
-    }
-    updateActionsValue(){
         let self=this;
-        $.post("getdata",{device_id:self.id},onAjaxSuccess,'json');
-        function onAjaxSuccess(data) {
+        $.post("getdata",{device_id:self.id},this.insertValuesInActions(),'json');
+        let timerId=setTimeout(function update() {
+            $.post("getdata",{device_id:self.id},self.insertValuesInActions(),'json');
+            timerId=setTimeout(update,self.updateTime);
+        },self.updateTime);
+    }
+    insertValuesInActions(){
+        let self=this;
+        return function (data) {
             if (data.thing_id==self.id){
                 let dataActionGroups=data.actionGroups;
                 for (let i=0;i<dataActionGroups.length;i++){
@@ -339,7 +374,6 @@ class Device{
                     }
                 }
             }
-
         }
     }
 }

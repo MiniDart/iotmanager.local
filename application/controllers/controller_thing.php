@@ -36,13 +36,7 @@ class Controller_thing extends Controller
         $this->view->generate("actionsdata_view.php","empty_view.php",$data );
     }
     function action_setaction(){
-        $data=$this->model->get_upgrade_device_data();
-        $curl=curl_init();
-        curl_setopt($curl, CURLOPT_URL,"http://localhost:3000/upgradeaction");
-        curl_setopt($curl, CURLOPT_POST, 1);
-        curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query(array('upgradeDevice' => $data)));
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        $server_output = curl_exec ($curl);
+        $server_output=$this->model->set_action_data();
         $this->view->generate("actionsdata_view.php","empty_view.php",$server_output );
     }
 }

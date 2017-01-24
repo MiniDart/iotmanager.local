@@ -41,6 +41,145 @@ class Model_thing extends Model
         curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query(array('device_id' => $device_id)));
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
         $server_output = curl_exec ($curl);
+        return $this->prepare_for_browser($server_output);
+    }
+    public function set_action_data(){
+        $device=json_decode($_POST['newData'],true);
+        $actionGroup_count=count($device['actionGroups']);
+        $resp="Error";
+        $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
+        if ($mysqli->connect_errno) {
+            die("Не удалось подключиться к MySQL");
+        }
+        for ($i=0;$i<$actionGroup_count;$i++){
+            $actions=&$device['actionGroups'][$i]['actions'];
+            $actions_count=count($actions);
+            for ($l=0;$l<$actions_count;$l++){
+                if (isset($actions[$l]['value'])){
+                    $query="SELECT format FROM actions_description WHERE id=$actions[$l][id]";
+                    if ($res = $mysqli->query($query)) {
+                        $format = $res->fetch_all(MYSQLI_ASSOC)[0]['format'];
+                        echo $format;
+                        $res->close();
+                    } else {
+                        echo "Can't get results from database in Model_thing->set_action_data(). Error=".$mysqli->error;
+                        $mysqli->close();
+                        return false;
+                    }
+                    if ($format=="list"){
+                        $query="SELECT item_name FROM action_range WHERE action_id=$actions[$l][id]";
+                        if ($res = $mysqli->query($query)) {
+                            $items = $res->fetch_all(MYSQLI_ASSOC);
+                            $res->close();
+                        } else {
+                            echo "Can't get results from database in Model_thing->set_action_data() Error=".$mysqli->error;
+                            $mysqli->close();
+                            return false;
+                        }
+                        $is_in_list=false;
+                        $count_items=count($items);
+                        for ($n=0;$n<$count_items;$n++){
+                            if ($items[$n]['item_name']==$actions[$l]['value']){
+                                $is_in_list=true;
+                                break;
+                            }
+                        }
+                        if (!$is_in_list) return $resp;
+                    }
+                    elseif ($format=="number"){
+                        $query="SELECT range_from,range_to FROM action_range WHERE action_id=$actions[$l][id]";
+                        if ($res = $mysqli->query($query)) {
+                            $item = $res->fetch_all(MYSQLI_ASSOC);
+                            $res->close();
+                        } else {
+                            echo "Can't get results from database in Model_thing->set_action_data() Error=".$mysqli->error;
+                            $mysqli->close();
+                            return false;
+                        }
+                        $from=$item[0]['from']==null?false:(+$item[0]['from']);
+                        $to=$item[0]['to']==null?false:(+$item[0]['to']);
+                        if (!$from) {
+                            if (+$actions[$l]['value']>$to) return $resp;
+                        }
+                        elseif (!$to){
+                            if (+$actions[$l]['value']<$from) return $resp;
+                        }
+                        else{
+                            if ((+$actions[$l]['value']<$from)&&(+$actions[$l]['value']>$to)) return $resp;
+                        }
+                    }
+                }
+                if (isset($actions[$l]['id'])) unset($actions[$l]['id']);
+                if (isset($actions[$l]['supportActions'])){
+                    $support_actions=&$actions[$l]['supportActions'];
+                    $support_actions_count=count($support_actions);
+                    for($m=0;$m<$support_actions_count;$m++){
+                        $query="SELECT format FROM support_actions WHERE id=".$support_actions[$m]['id'];
+                        if ($res = $mysqli->query($query)) {
+                            $format = $res->fetch_all(MYSQLI_ASSOC)[0]['format'];
+                            $res->close();
+                        } else {
+                            echo "Can't get results from database in Model_thing->set_action_data() Error=".$mysqli->error;
+                            $mysqli->close();
+                            return false;
+                        }
+                        if ($format=="list"){
+                            $query="SELECT item_name FROM support_action_range WHERE action_id=".$support_actions[$m]['id'];
+                            if ($res = $mysqli->query($query)) {
+                                $items = $res->fetch_all(MYSQLI_ASSOC);
+                                $res->close();
+                            } else {
+                                echo "Can't get results from database in Model_thing->set_action_data() Error=".$mysqli->error;
+                                $mysqli->close();
+                                return false;
+                            }
+                            $is_in_list=false;
+                            $count_items=count($items);
+                            for ($n=0;$n<$count_items;$n++){
+                                if ($items[$n]['item_name']==$support_actions[$m]['value']){
+                                    $is_in_list=true;
+                                    break;
+                                }
+                            }
+                            if (!$is_in_list) return $resp;
+                        }
+                        elseif ($format=="number"){
+                            $query="SELECT range_from,range_to FROM support_action_range WHERE action_id=$support_actions[$m][id]";
+                            if ($res = $mysqli->query($query)) {
+                                $item = $res->fetch_all(MYSQLI_ASSOC);
+                                $res->close();
+                            } else {
+                                echo "Can't get results from database in Model_thing->set_action_data() Error=".$mysqli->error;
+                                $mysqli->close();
+                                return false;
+                            }
+                            $from=$item[0]['from']==null?false:(+$item[0]['from']);
+                            $to=$item[0]['to']==null?false:(+$item[0]['to']);
+                            if (!$from) {
+                                if (+$support_actions[$m]['value']>$to) return $resp;
+                            }
+                            elseif (!$to){
+                                if (+$support_actions[$m]['value']<$from) return $resp;
+                            }
+                            else{
+                                if ((+$support_actions[$m]['value']<$from)&&(+$support_actions[$m]['value']>$to)) return $resp;
+                            }
+                        }
+                        unset($support_actions[$m]['id']);
+                    }
+                }
+            }
+        }
+        $mysqli->close();
+        $curl=curl_init();
+        curl_setopt($curl, CURLOPT_URL,"http://localhost:3000/upgradeaction");
+        curl_setopt($curl, CURLOPT_POST, 1);
+        curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query(array('upgradeDevice' => json_encode($device))));
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+        return $this->prepare_for_browser(curl_exec ($curl));
+        
+    }
+    private function prepare_for_browser($server_output){
         $current_action_data=json_decode($server_output,true);
         $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
         if ($mysqli->connect_errno) {
@@ -95,25 +234,5 @@ class Model_thing extends Model
         $mysqli->close();
         $current_action_data=json_encode($current_action_data);
         return $current_action_data;
-    }
-    public function get_upgrade_device_data(){
-        $param=json_decode($_POST['newData'],true);
-        $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
-        if ($mysqli->connect_errno) {
-            echo "Can't connect to database in Model_thing->get_upgrade_device_data()";
-            return false;
-        }
-        $query="SELECT thing_id,action_name FROM actions_description WHERE id=$param[action_id]";
-        if ($res=$mysqli->query($query)){
-            $data=$res->fetch_all(MYSQLI_ASSOC);
-            $res->close();
-        }
-        else {
-            echo "Can't get results from database in Model_thing->get_upgrade_device_data()";
-            $mysqli->close();
-            return false;
-        }
-        $mysqli->close();
-        return json_encode(array("device_id"=>$data[0]['thing_id'],"name"=>$data[0]['action_name'],"value"=>$param['value']));
     }
 }
