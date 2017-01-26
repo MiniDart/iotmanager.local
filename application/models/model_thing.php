@@ -56,10 +56,9 @@ class Model_thing extends Model
             $actions_count=count($actions);
             for ($l=0;$l<$actions_count;$l++){
                 if (isset($actions[$l]['value'])){
-                    $query="SELECT format FROM actions_description WHERE id=$actions[$l][id]";
+                    $query="SELECT format FROM actions_description WHERE id=".$actions[$l]['id'];
                     if ($res = $mysqli->query($query)) {
                         $format = $res->fetch_all(MYSQLI_ASSOC)[0]['format'];
-                        echo $format;
                         $res->close();
                     } else {
                         echo "Can't get results from database in Model_thing->set_action_data(). Error=".$mysqli->error;
@@ -67,7 +66,7 @@ class Model_thing extends Model
                         return false;
                     }
                     if ($format=="list"){
-                        $query="SELECT item_name FROM action_range WHERE action_id=$actions[$l][id]";
+                        $query="SELECT item_name FROM action_range WHERE action_id=".$actions[$l]['id'];
                         if ($res = $mysqli->query($query)) {
                             $items = $res->fetch_all(MYSQLI_ASSOC);
                             $res->close();
@@ -87,7 +86,7 @@ class Model_thing extends Model
                         if (!$is_in_list) return $resp;
                     }
                     elseif ($format=="number"){
-                        $query="SELECT range_from,range_to FROM action_range WHERE action_id=$actions[$l][id]";
+                        $query="SELECT range_from,range_to FROM action_range WHERE action_id=".$actions[$l]['id'];
                         if ($res = $mysqli->query($query)) {
                             $item = $res->fetch_all(MYSQLI_ASSOC);
                             $res->close();
@@ -105,7 +104,7 @@ class Model_thing extends Model
                             if (+$actions[$l]['value']<$from) return $resp;
                         }
                         else{
-                            if ((+$actions[$l]['value']<$from)&&(+$actions[$l]['value']>$to)) return $resp;
+                            if ((+$actions[$l]['value']<$from)||(+$actions[$l]['value']>$to)) return $resp;
                         }
                     }
                 }

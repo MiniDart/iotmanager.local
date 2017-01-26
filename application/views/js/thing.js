@@ -75,15 +75,13 @@ class Item{
                         to=+data.to;
                     }
                     if (!(from||to)) throw new Error("There is no from and to in range. Action:"+owner.name);
-                    if (!from) from="infinity";
-                    if (!to) to="infinity";
                     this.from=from;
                     this.to=to;
                     this.name=null;
                     break;
                 case "date":
-                    let fromDate=undefined;
-                    let toDate=undefined;
+                    let fromDate=null;
+                    let toDate=null;
                     if ("from" in data){
                         let params=data.from.split(",");
                         fromDate=new Date(params[0],params[1],(params[2]==undefined?null:params[2]),(params[3]==undefined?null:params[3]),(params[4]==undefined?null:params[4]),(params[5]==undefined?null:params[5]),(params[6]==undefined?null:params[6]));
@@ -94,8 +92,6 @@ class Item{
                         toDate=new Date(params[0],params[1],(params[2]==undefined?null:params[2]),(params[3]==undefined?null:params[3]),(params[4]==undefined?null:params[4]),(params[5]==undefined?null:params[5]),(params[6]==undefined?null:params[6]));
                     }
                     if (!(fromDate||toDate)) throw new Error("There is no from and to in range. Action:"+owner.name);
-                    if (!fromDate) fromDate="infinity";
-                    if (!toDate) toDate="infinity";
                     this.from=fromDate;
                     this.to=toDate;
                     this.name=null;
@@ -105,7 +101,19 @@ class Item{
 
     }
     isInRange(val){
-        return false;
+        if (this.format=="number"){
+            val=+val;
+            if (!from){
+                if (val>to) return false;
+                else return true;
+            }
+            if (!to){
+                if (val<from) return false;
+                else return true;
+            }
+            if (val<from||val>to) return false;
+            return true;
+        }
     }
 }
 
@@ -175,6 +183,28 @@ class Action{
         }
         return actionDom;
     }
+    getValue(selector){
+        if (this.format=="list"){
+            let id=+this.domElement.find(selector).val();
+            let name;
+            if (this.range.has(id)) name=this.range.get(id).name;
+            else  if(id==-1) name="none";
+            return name;
+        }
+        if (this.format=="number"){
+            let item;
+            for (let value of this.range.values()){
+                item=value;
+                break;
+            }
+            let val=+this.domElement.find(selector).val();
+            if (!item.isInRange(val)) {
+                alert("Error: Write a correct value!");
+                throw new Error("Incorrect value");
+            }
+            return val;
+        }
+    }
 
 }
 
@@ -206,25 +236,23 @@ class SupportAction extends Action{
             let submit=$("<div class='submit'><input type='submit' value='"+(this.submitName?this.submitName:"Отправить")+"'></div>");
             let self=this;
             submit.find("input").on("click",function (event) {
-                let device={};
-                device.id=self.owner.owner.owner.id;
-                device.actionGroups=[];
-                let actionGroup={};
-                actionGroup.name=self.owner.owner.name;
-                actionGroup.actions=[];
-                device.actionGroups.push(actionGroup);
-                let action={};
-                action.name=self.owner.name;
+                let resOfBuild=self.owner.buildDevice();
+                let device=resOfBuild.device;
+                let action=resOfBuild.action;
                 action.supportActions=[];
-                actionGroup.actions.push(action);
                 let supportAction={};
                 supportAction.id=self.id;
                 supportAction.name=self.name;
                 action.supportActions.push(supportAction);
-                if (self.format=="list"){
-                    let id=self.domElement.find(".newValue").val();
-                    let name=self.range.get(+id).name;
-                    supportAction.value=name;
+                try{
+                    supportAction.value=self.getValue(".newValue.support");
+                }
+                catch (e){
+                    return;
+                }
+                if (supportAction.value=="none"){
+                    alert("Error: Choose a correct value");
+                    return;
                 }
                 $.post("setaction",{'newData':JSON.stringify(device)},self.owner.owner.owner.insertValuesInActions(),'json');
             });
@@ -269,12 +297,39 @@ class MainAction extends Action{
         }
         if (this.isChangeable){
             let submit=$("<div class='submit'><input type='submit' value='"+(this.submitName?this.submitName:"Отправить")+"'></div>");
+            let self=this;
             submit.find("input").on("click",function (event) {
+                let resOfBuild=self.buildDevice();
+                let device=resOfBuild.device;
+                let action=resOfBuild.action;
+                try {
+                    action.value = self.getValue(".newValue.main");
+                }
+                catch (e){
+                    return;
+                }
+                if (action.value=="none"){
+                    alert("Error: Choose correct value");
+                    return;
+                }
+                if (self.supportActions!=null) {
+                    action.supportActions = [];
+                    for (let supportActionSelf of self.supportActions.values()) {
+                        let value;
+                        if (!supportActionSelf.isChangeable||supportActionSelf.domElement.css("display")=="none"||(value=supportActionSelf.getValue(".newValue.support"))=="none") continue;
+                        let supportAction = {};
+                        supportAction.id = supportActionSelf.id;
+                        supportAction.name = supportActionSelf.name;
+                        supportAction.value=value;
+                        action.supportActions.push(supportAction);
+                    }
+                }
+                $.post("setaction",{'newData':JSON.stringify(device)},self.owner.owner.insertValuesInActions(),'json');
             });
             mainActionDom.append(submit);
 
         }
-        if (this.format=="list") {
+        if (this.format=="list"&&this.supportActions!=null) {
             let self=this;
             mainActionDom.find(".newValue").change(function (event) {
                 let val = $(this).val();
@@ -299,6 +354,20 @@ class MainAction extends Action{
         }
         this.domElement=mainActionDom;
         return mainActionDom;
+    }
+    buildDevice(){
+        let device={};
+        device.id=this.owner.owner.id;
+        device.actionGroups=[];
+        let actionGroup={};
+        actionGroup.name=this.owner.name;
+        actionGroup.actions=[];
+        device.actionGroups.push(actionGroup);
+        let action={};
+        action.name=this.name;
+        action.id=this.id;
+        actionGroup.actions.push(action);
+        return {"device":device,"action":action}
     }
 }
 
@@ -398,7 +467,7 @@ class DrawManager{
         this.activeTheme=this.themes[0];
     }
     start(){
-        this.device.updateOnTime();
+       this.device.updateOnTime();
     }
     draw(){
         $("h1.device_name").text(this.device.name);
