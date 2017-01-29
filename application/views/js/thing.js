@@ -5,10 +5,10 @@
 "use strict";
 //делаем заглавные буквы
 /*$('h1,h2').each(function (index, element) {
-    var text=element.innerHTML;
-    var l=text[0].toUpperCase();
-    element.innerHTML=l+text.substring(1);
-});*/
+ var text=element.innerHTML;
+ var l=text[0].toUpperCase();
+ element.innerHTML=l+text.substring(1);
+ });*/
 //получаем action_id
 /*var actionList=[];
  $(".item").each(function (index, element) {
@@ -48,132 +48,138 @@
 
 //Описание сущностей----------------------------------------------------------------------------------
 function makeBigFirstLetter(word) {
-    let l=word[0].toUpperCase();
-    return l+word.substring(1);
+    let l = word[0].toUpperCase();
+    return l + word.substring(1);
 }
-class Item{
-    constructor(data,owner){
-        this.owner=owner;
-        if ("color" in data) this.color=data.color;
-        else this.color=null;
-        this.id=data.id;
-        this.format=owner.format;
-            switch (this.format) {
-                case "list":
-                    if (!data.name) throw new Error("There is no name in range. Action:"+owner.name);
-                    this.name = data.name;
-                    this.from=null;
-                    this.to=null;
-                    break;
-                case "number":
-                    let from=null;
-                    let to=null;
-                    if ("from" in data){
-                        from=+data.from;
-                    }
-                    if ("to" in data){
-                        to=+data.to;
-                    }
-                    if (!(from||to)) throw new Error("There is no from and to in range. Action:"+owner.name);
-                    this.from=from;
-                    this.to=to;
-                    this.name=null;
-                    break;
-                case "date":
-                    let fromDate=null;
-                    let toDate=null;
-                    if ("from" in data){
-                        let params=data.from.split(",");
-                        fromDate=new Date(params[0],params[1],(params[2]==undefined?null:params[2]),(params[3]==undefined?null:params[3]),(params[4]==undefined?null:params[4]),(params[5]==undefined?null:params[5]),(params[6]==undefined?null:params[6]));
+function rankSort(a, b) {
+    return (a.rank - b.rank);
+}
+class Item {
+    constructor(data, owner) {
+        this.owner = owner;
+        if ("color" in data) this.color = data.color;
+        else this.color = null;
+        this.id = +data.id;
+        this.format = owner.format;
+        switch (this.format) {
+            case "list":
+                if (!data.name) throw new Error("There is no name in range. Action:" + owner.name);
+                this.name = data.name;
+                this.from = null;
+                this.to = null;
+                break;
+            case "number":
+                let from = null;
+                let to = null;
+                if ("from" in data) {
+                    from = +data.from;
+                }
+                if ("to" in data) {
+                    to = +data.to;
+                }
+                if (!(from || to)) throw new Error("There is no from and to in range. Action:" + owner.name);
+                this.from = from;
+                this.to = to;
+                this.name = null;
+                break;
+            case "date":
+                let fromDate = null;
+                let toDate = null;
+                if ("from" in data) {
+                    let params = data.from.split(",");
+                    fromDate = new Date(params[0], params[1], (params[2] == undefined ? null : params[2]), (params[3] == undefined ? null : params[3]), (params[4] == undefined ? null : params[4]), (params[5] == undefined ? null : params[5]), (params[6] == undefined ? null : params[6]));
 
-                    }
-                    if ("to" in data){
-                        let params=data.from.split(",");
-                        toDate=new Date(params[0],params[1],(params[2]==undefined?null:params[2]),(params[3]==undefined?null:params[3]),(params[4]==undefined?null:params[4]),(params[5]==undefined?null:params[5]),(params[6]==undefined?null:params[6]));
-                    }
-                    if (!(fromDate||toDate)) throw new Error("There is no from and to in range. Action:"+owner.name);
-                    this.from=fromDate;
-                    this.to=toDate;
-                    this.name=null;
-                    break;
-            }
+                }
+                if ("to" in data) {
+                    let params = data.from.split(",");
+                    toDate = new Date(params[0], params[1], (params[2] == undefined ? null : params[2]), (params[3] == undefined ? null : params[3]), (params[4] == undefined ? null : params[4]), (params[5] == undefined ? null : params[5]), (params[6] == undefined ? null : params[6]));
+                }
+                if (!(fromDate || toDate)) throw new Error("There is no from and to in range. Action:" + owner.name);
+                this.from = fromDate;
+                this.to = toDate;
+                this.name = null;
+                break;
+        }
 
 
     }
-    isInRange(val){
-        if (this.format=="number"){
-            val=+val;
-            if (!from){
-                if (val>to) return false;
+
+    isInRange(val) {
+        if (this.format == "number") {
+            val = +val;
+            if (!from) {
+                if (val > to) return false;
                 else return true;
             }
-            if (!to){
-                if (val<from) return false;
+            if (!to) {
+                if (val < from) return false;
                 else return true;
             }
-            if (val<from||val>to) return false;
+            if (val < from || val > to) return false;
             return true;
         }
     }
 }
 
-class MainItem extends Item{
-    constructor(data,owner){
-        super(data,owner);
+class MainItem extends Item {
+    constructor(data, owner) {
+        super(data, owner);
     }
 }
 
-class SupportItem extends Item{
-    constructor(data,owner){
-        super(data,owner);
-        if ("isDeactivator" in data) this.isDeactivator=data.isDeactivator=="true";
-        else this.isDeactivator=false;
-        if ("description" in data) this.description=data.description;
-        else this.description=null;
+class SupportItem extends Item {
+    constructor(data, owner) {
+        super(data, owner);
+        if ("isDeactivator" in data) this.isDeactivator = data.isDeactivator == "true";
+        else this.isDeactivator = false;
+        if ("description" in data) this.description = data.description;
+        else this.description = null;
     }
 }
 
-class Action{
-    constructor(data,owner) {
+class Action {
+    constructor(data, owner, device) {
+        this.device = device;
         this.owner = owner;
         this.name = makeBigFirstLetter(data.name);
         this.format = data.format;
         this.isChangeable = data.isChangeable == "true";
-        this.submitName=null;
+        this.submitName = null;
         if ("submitName" in data) this.submitName = makeBigFirstLetter(data.submitName);
         this.isNeedStatistics = data.isNeedStatistics == "true";
-        this.rank = data.rank;
-        this.id = data.id;
+        this.id = +data.id;
+        device.actions.set(this.id, this);
         this.description = null;
         if ("description" in data) this.description = makeBigFirstLetter(data.description);
-        this.domElement=null;
+        this.domElement = null;
     }
-    draw(){
-        let actionDom=$("<div><h3>"+this.name+"</h3></div>");
-        if (this.description!=null) actionDom.append("<div class='description'>"+this.description+"</div>");
+
+    draw() {
+        let actionDom = $("<div><h3>" + this.name + "</h3></div>");
+        if (this.description != null) actionDom.append("<div class='description'>" + this.description + "</div>");
         actionDom.append("<p>Текущее значение:</p><div class='value'></div>");
-        if (this.isChangeable){
-            let from=null;
-            let to=null;
-            if (this.range!=null&&this.format!="list") {
-                let range=[];
-                for (let item of this.range.values()){
+        if (this.isChangeable) {
+            let from = null;
+            let to = null;
+            if (this.range != null && this.format != "list") {
+                let range = [];
+                for (let item of this.range.values()) {
                     range.push(item);
                 }
-                from=range[0].from;
-                to=range[0].to;
+                from = range[0].from;
+                to = range[0].to;
             }
-            switch (this.format){
+            switch (this.format) {
                 case "number":
-                    actionDom.append("<p>Введите новое значение"+(from||to?" в диапозоне":"")+(from?" от "+from:"")+(to?" до"+to:"")+":</p>");
+                    actionDom.append("<p>Введите новое значение" + (from || to ? " в диапозоне" : "") + (from ? " от " + from : "") + (to ? " до" + to : "") + ":</p>");
                     actionDom.append("<input class='newValue' type='text'>");
                     break;
                 case "list":
                     actionDom.append("<p>Выберите новое значение:</p>");
-                    let selectDom=$("<select class='newValue'></select>");
+                    let selectDom = $("<select class='newValue'></select>");
                     selectDom.append($("<option value='-1'>none</option>"));
-                    for (let [key,value] of this.range){
-                        selectDom.append($("<option value='"+key+"'>"+value.name+"</option>"));
+                    for (let [key,value] of this.range) {
+                        selectDom.append($("<option value='" + key + "'>" + value.name + "</option>"));
                     }
                     actionDom.append(selectDom);
                     break;
@@ -183,21 +189,22 @@ class Action{
         }
         return actionDom;
     }
-    getValue(selector){
-        if (this.format=="list"){
-            let id=+this.domElement.find(selector).val();
+
+    getValue(selector) {
+        if (this.format == "list") {
+            let id = +this.domElement.find(selector).val();
             let name;
-            if (this.range.has(id)) name=this.range.get(id).name;
-            else  if(id==-1) name="none";
+            if (this.range.has(id)) name = this.range.get(id).name;
+            else if (id == -1) name = "none";
             return name;
         }
-        if (this.format=="number"){
+        if (this.format == "number") {
             let item;
-            for (let value of this.range.values()){
-                item=value;
+            for (let value of this.range.values()) {
+                item = value;
                 break;
             }
-            let val=+this.domElement.find(selector).val();
+            let val = +this.domElement.find(selector).val();
             if (!item.isInRange(val)) {
                 alert("Error: Write a correct value!");
                 throw new Error("Incorrect value");
@@ -208,16 +215,16 @@ class Action{
 
 }
 
-class SupportAction extends Action{
-    constructor(data,owner) {
-        super(data, owner);
+class SupportAction extends Action {
+    constructor(data, owner, device) {
+        super(data, owner, device);
         this.isDisactivator = data.isDisactivator == "true";
         this.isIndividual = data.isIndividual == "true";
         this.range = null;
         if ("range" in data) {
             let r = new Map();
             for (let i = 0; i < data.range.length; i++) {
-                r.set(data.range[i].id,new SupportItem(data.range[i], this));
+                r.set(+data.range[i].id, new SupportItem(data.range[i], this));
             }
             this.range = r;
         }
@@ -225,218 +232,250 @@ class SupportAction extends Action{
         if ("active" in data) this.active = data.active;
     }
 
-    draw(){
-        let supportActionDom=super.draw();
+    draw() {
+        let supportActionDom = super.draw();
         supportActionDom.attr({
-            "class":"supportAction",
-            "id":"supportAction_"+this.id
+            "class": "supportAction",
+            "id": "supportAction_" + this.id
         });
         supportActionDom.find(".value").addClass("support");
-        if (this.isChangeable&&this.isIndividual){
-            let submit=$("<div class='submit'><input type='submit' value='"+(this.submitName?this.submitName:"Отправить")+"'></div>");
-            let self=this;
-            submit.find("input").on("click",function (event) {
-                let resOfBuild=self.owner.buildDevice();
-                let device=resOfBuild.device;
-                let action=resOfBuild.action;
-                action.supportActions=[];
-                let supportAction={};
-                supportAction.id=self.id;
-                supportAction.name=self.name;
+        if (this.isChangeable && this.isIndividual) {
+            let submit = $("<div class='submit'><input type='submit' value='" + (this.submitName ? this.submitName : "Отправить") + "'></div>");
+            let self = this;
+            submit.find("input").on("click", function (event) {
+                let resOfBuild = self.owner.buildDevice();
+                let device = resOfBuild.device;
+                let action = resOfBuild.action;
+                action.supportActions = [];
+                let supportAction = {};
+                supportAction.id = self.id;
+                supportAction.name = self.name;
                 action.supportActions.push(supportAction);
-                try{
-                    supportAction.value=self.getValue(".newValue.support");
+                try {
+                    supportAction.value = self.getValue(".newValue.support");
                 }
-                catch (e){
+                catch (e) {
                     return;
                 }
-                if (supportAction.value=="none"){
+                if (supportAction.value == "none") {
                     alert("Error: Choose a correct value");
                     return;
                 }
-                $.post("setaction",{'newData':JSON.stringify(device)},self.owner.owner.owner.insertValuesInActions(),'json');
+                $.post("setaction", {'newData': JSON.stringify(device)}, self.owner.owner.owner.insertValuesInActions(), 'json');
             });
             supportActionDom.append(submit);
         }
         supportActionDom.find(".newValue").addClass("support");
-        this.domElement=supportActionDom;
+        this.domElement = supportActionDom;
         return supportActionDom;
     }
 }
 
-class MainAction extends Action{
-    constructor(data,owner){
-        super(data,owner);
-        this.range=null;
-        if ("range" in data){
-            let r=new Map();
-            for (let i=0;i<data.range.length;i++){
-                r.set(data.range[i].id,new MainItem(data.range[i],this));
+class MainAction extends Action {
+    constructor(data, owner, device) {
+        super(data, owner, device);
+        this.range = null;
+        if ("range" in data) {
+            let r = new Map();
+            for (let i = 0; i < data.range.length; i++) {
+                r.set(+data.range[i].id, new MainItem(data.range[i], this));
             }
-            this.range=r;
+            this.range = r;
         }
-        this.supportActions=null;
-        if ("support" in data){
-            let actions=new Map();
-            for (let i=0;i<data.support.length;i++){
-                actions.set(data.support[i].id,new SupportAction(data.support[i],this));
+        this.rank = +data.rank;
+        this.supportActions = null;
+        if ("support" in data) {
+            let actions = new Map();
+            for (let i = 0; i < data.support.length; i++) {
+                actions.set(+data.support[i].id, new SupportAction(data.support[i], this, device));
             }
-            this.supportActions=actions;
+            this.supportActions = actions;
         }
     }
-    draw(){
-        let mainActionDom=super.draw();
+
+    draw() {
+        let mainActionDom = super.draw();
         mainActionDom.attr({
-            "class":"mainAction",
-            "id":"mainAction_"+this.id
+            "class": "mainAction",
+            "id": "mainAction_" + this.id
         });
         mainActionDom.find(".value").addClass("main");
         mainActionDom.find(".newValue").addClass("main");
-        if (this.supportActions!=null) {
+        if (this.supportActions != null) {
             mainActionDom.append("<div class='support'></div>");
         }
-        if (this.isChangeable){
-            let submit=$("<div class='submit'><input type='submit' value='"+(this.submitName?this.submitName:"Отправить")+"'></div>");
-            let self=this;
-            submit.find("input").on("click",function (event) {
-                let resOfBuild=self.buildDevice();
-                let device=resOfBuild.device;
-                let action=resOfBuild.action;
+        if (this.isChangeable) {
+            let submit = $("<div class='submit'><input type='submit' value='" + (this.submitName ? this.submitName : "Отправить") + "'></div>");
+            let self = this;
+            submit.find("input").on("click", function (event) {
+                let resOfBuild = self.buildDevice();
+                let device = resOfBuild.device;
+                let action = resOfBuild.action;
                 try {
                     action.value = self.getValue(".newValue.main");
                 }
-                catch (e){
+                catch (e) {
                     return;
                 }
-                if (action.value=="none"){
+                if (action.value == "none") {
                     alert("Error: Choose correct value");
                     return;
                 }
-                if (self.supportActions!=null) {
+                if (self.supportActions != null) {
                     action.supportActions = [];
                     for (let supportActionSelf of self.supportActions.values()) {
                         let value;
-                        if (!supportActionSelf.isChangeable||supportActionSelf.domElement.css("display")=="none"||(value=supportActionSelf.getValue(".newValue.support"))=="none") continue;
+                        if (!supportActionSelf.isChangeable || supportActionSelf.domElement.css("display") == "none" || (value = supportActionSelf.getValue(".newValue.support")) == "none") continue;
                         let supportAction = {};
                         supportAction.id = supportActionSelf.id;
                         supportAction.name = supportActionSelf.name;
-                        supportAction.value=value;
+                        supportAction.value = value;
                         action.supportActions.push(supportAction);
                     }
                 }
-                $.post("setaction",{'newData':JSON.stringify(device)},self.owner.owner.insertValuesInActions(),'json');
+                $.post("setaction", {'newData': JSON.stringify(device)}, self.owner.owner.insertValuesInActions(), 'json');
             });
             mainActionDom.append(submit);
 
         }
-        if (this.format=="list"&&this.supportActions!=null) {
-            let self=this;
+        if (this.format == "list" && this.supportActions != null) {
+            let self = this;
             mainActionDom.find(".newValue").change(function (event) {
                 let val = $(this).val();
-                let textVal=null;
-                if (self.range.has(+val)){
-                    textVal=self.range.get(+val).name;
+                let textVal = null;
+                if (self.range.has(+val)) {
+                    textVal = self.range.get(+val).name;
                 }
-                let supportActions=[];
-                for (let supportAction of self.supportActions.values()){
+                let supportActions = [];
+                for (let supportAction of self.supportActions.values()) {
                     supportAction.domElement.hide();
-                    if (!supportAction.active){
+                    if (!supportAction.active) {
                         supportActions.push(supportAction);
                     }
-                    else if (textVal!=null){
-                        let activeItems=supportAction.active.split(":");
-                        if (activeItems.indexOf(textVal)!=-1) supportActions.push(supportAction);
+                    else if (textVal != null) {
+                        let activeItems = supportAction.active.split(":");
+                        if (activeItems.indexOf(textVal) != -1) supportActions.push(supportAction);
                     }
                 }
-                let algorithm=drawManager.activeTheme.algorithm;
-                drawManager[algorithm+"SupportAlgorithm"](supportActions,mainActionDom,mainActionDom.width());
+                let algorithm = drawManager.activeTheme.algorithm;
+                drawManager[algorithm + "SupportAlgorithm"](supportActions,mainActionDom.width());
             });
         }
-        this.domElement=mainActionDom;
+        this.domElement = mainActionDom;
         return mainActionDom;
     }
-    buildDevice(){
-        let device={};
-        device.id=this.owner.owner.id;
-        device.actionGroups=[];
-        let actionGroup={};
-        actionGroup.name=this.owner.name;
-        actionGroup.actions=[];
+
+    buildDevice() {
+        let device = {};
+        device.id = this.owner.owner.id;
+        device.actionGroups = [];
+        let actionGroup = {};
+        actionGroup.name = this.owner.name;
+        actionGroup.actions = [];
         device.actionGroups.push(actionGroup);
-        let action={};
-        action.name=this.name;
-        action.id=this.id;
+        let action = {};
+        action.name = this.name;
+        action.id = this.id;
         actionGroup.actions.push(action);
-        return {"device":device,"action":action}
+        return {"device": device, "action": action}
     }
 }
 
-class ActionGroup{
-    constructor(data,owner){
-        this.owner=owner;
-        this.name=null;
-        if ("name" in data) this.name=makeBigFirstLetter(data.name);
-        this.id=data.id;
-        this.rank=data.rank;
-        let actions=[];
-        this.actions=new Map();
-        for (let i=0;i<data.actions.length;i++){
-            this.actions.set(data.actions[i].id,new MainAction(data.actions[i],this));
+class ActionGroup {
+    constructor(data, owner, device) {
+        this.device = device;
+        this.owner = owner;
+        this.name = null;
+        if ("name" in data) this.name = makeBigFirstLetter(data.name);
+        this.id = +data.id;
+        device.actionGroups.set(this.id, this);
+        this.rank = +data.rank;
+        this.actions = new Map();
+        this.actionGroups = new Map();
+        if (data.actions) {
+            for (let i = 0; i < data.actions.length; i++) {
+                this.actions.set(+data.actions[i].id, new MainAction(data.actions[i], this, device));
+            }
         }
-        this.domElement=null;
+        if (data.actionGroups) {
+            for (let i = 0; i < data.actionGroups.length; i++) {
+                this.actionGroups.set(+data.actionGroups[i].id, new ActionGroup(data.actionGroups[i], this, device));
+            }
+        }
+        this.domElement = null;
     }
-    draw(){
-        let actionGroupDom=$("<div class='actionGroup' id='actionGroup_"+this.id+"'></div>");
-        if (this.name!=null){
-            actionGroupDom.append("<h2>"+this.name+"</h2>");
+
+    draw() {
+        let actionGroupDom = $("<div class='actionGroup' id='actionGroup_" + this.id + "'></div>");
+        if (this.name == null) {
+            if (this.id != 0) actionGroupDom.append("<h2>Unknown name</h2>");
         }
-        actionGroupDom.append("<div class='actionContainer'></div>");
-        this.domElement=actionGroupDom;
+        else actionGroupDom.append("<h2>" + this.name + "</h2>");
+        if (this.actionGroups.size > 0) {
+            let actionGroupContainer=$("<div class='actionGroupContainer'></div>");
+            actionGroupDom.append(actionGroupContainer);}
+        if (this.actions.size > 0)actionGroupDom.append("<div class='actionContainer'></div>");
+        this.domElement = actionGroupDom;
         return actionGroupDom;
 
     }
 }
 
-class Device{
-    constructor(data){
-        this.id=data.id;
-        this.name=makeBigFirstLetter(data.name);
-        this.group=data.thingGroup;
-        this.updateTime=+data.updateTime*1000;
-        this.actionGroups=new Map();
-        for (let i=0;i<data.actionGroups.length;i++){
-            this.actionGroups.set(data.actionGroups[i].id,new ActionGroup(data.actionGroups[i],this));
+class Device {
+    constructor(data) {
+        this.id = +data.id;
+        this.name = makeBigFirstLetter(data.name);
+        this.group = data.thingGroup;
+        this.updateTime = +data.updateTime * 1000;
+        this.actions = new Map();
+        this.actionGroups = new Map();
+        let rootGroup = new ActionGroup({"id": 0, "rank": 0, "actionGroups": data.actionGroups}, null, this);
+        this.actionGroups.set(0, rootGroup);
+        for (let actionGroup of rootGroup.actionGroups.values()) {
+            if (actionGroup.rank === 0) {
+                this.activeGroup = actionGroup;
+                break;
+            }
         }
-        this.domElement=null;
+        this.domElement = null;
     }
-    draw(){
-        let deviceDom=$("<div class='device' id='device_"+this.id+"'></div>");
-        this.domElement=deviceDom;
+
+    draw() {
+        let deviceDom = $("<div class='device clearFix' id='device_" + this.id + "'><div class='path'></div><div class='currentLevelGroup'></div><div class='groupContainer'></div></div>");
+        this.domElement = deviceDom;
         return deviceDom;
     }
-    updateOnTime(){
-        let self=this;
-        $.post("getdata",{device_id:self.id},this.insertValuesInActions(),'json');
-        let timerId=setTimeout(function update() {
-            $.post("getdata",{device_id:self.id},self.insertValuesInActions(),'json');
-            timerId=setTimeout(update,self.updateTime);
-        },self.updateTime);
+
+    updateOnTime() {
+        let self = this;
+        $.post("getdata", {device_id: self.id}, this.insertValuesInActions(), 'json');
+        let timerId = setTimeout(function update() {
+            $.post("getdata", {device_id: self.id}, self.insertValuesInActions(), 'json');
+            timerId = setTimeout(update, self.updateTime);
+        }, self.updateTime);
     }
-    insertValuesInActions(){
-        let self=this;
+
+    createActionGroups(actionGroups) {
+        for (let i = 0; i < actionGroups.length; i++) {
+
+        }
+    }
+
+    insertValuesInActions() {
+        let self = this;
         return function (data) {
-            if (data.thing_id==self.id){
-                let dataActionGroups=data.actionGroups;
-                for (let i=0;i<dataActionGroups.length;i++){
-                    let actionGroup=self.actionGroups.get(+dataActionGroups[i].id);
-                    let dataActions=dataActionGroups[i].actions;
-                    for (let l=0;l<dataActions.length;l++){
-                        let action=actionGroup.actions.get(+dataActions[l].id);
+            if (data.thing_id == self.id) {
+                let dataActionGroups = data.actionGroups;
+                for (let i = 0; i < dataActionGroups.length; i++) {
+                    let actionGroup = self.actionGroups.get(+dataActionGroups[i].id);
+                    let dataActions = dataActionGroups[i].actions;
+                    for (let l = 0; l < dataActions.length; l++) {
+                        let action = actionGroup.actions.get(+dataActions[l].id);
                         action.domElement.find(".value").filter(".main").text(dataActions[l].value);
-                        if ("supportActions" in dataActions[l]){
-                            let dataSupportActions=dataActions[l].supportActions;
-                            for (let n=0;n<dataSupportActions.length;n++){
-                                let supportAction=action.supportActions.get(+dataSupportActions[n].id);
+                        if ("supportActions" in dataActions[l]) {
+                            let dataSupportActions = dataActions[l].supportActions;
+                            for (let n = 0; n < dataSupportActions.length; n++) {
+                                let supportAction = action.supportActions.get(+dataSupportActions[n].id);
                                 supportAction.domElement.find(".value").text(dataSupportActions[n].value);
                             }
                         }
@@ -448,140 +487,204 @@ class Device{
 }
 
 
-
-
-class Theme{
-    constructor(){
-        this.name="Simple";
-        this.allLines=2;
-        this.algorithm="simple";
-        this.rules=null;
+class Theme {
+    constructor() {
+        this.name = "Simple";
+        this.allLines = 2;
+        this.algorithm = "simple";
+        this.rules = null;
     }
 }
 
-class DrawManager{
-    constructor(device){
-        this.device=device;
-        this.themes=[];
+class DrawManager {
+    constructor(device) {
+        this.device = device;
+        this.themes = [];
         this.themes.push(new Theme());
-        this.activeTheme=this.themes[0];
+        this.activeTheme = this.themes[0];
+        this.deviceDomWidth = null;
     }
-    start(){
-       this.device.updateOnTime();
+
+    start() {
+        this.device.updateOnTime();
     }
-    draw(){
+
+    draw() {
         $("h1.device_name").text(this.device.name);
-        this[this.activeTheme.algorithm+"Algorithm"]();
+        this[this.activeTheme.algorithm + "Algorithm"]();
     }
-    simpleAlgorithm(){
-        let deviceDom=this.device.draw();
-        let containerWidth=document.documentElement.clientWidth-200;
+
+    simpleAlgorithm() {
+        let deviceDom = this.device.draw();
+        let section = $("section.container");
+        this.deviceDomWidth = document.documentElement.clientWidth - 200;
         deviceDom.css({
-            "width":containerWidth+"px",
-            "height":"100%",
-            "margin-left":"auto",
-            "margin-right":"auto",
-            "border-left":"1px solid white",
-            "border-right":"1px solid white",
-            "color":"white",
-            "font-size":"20px"
+            "width": this.deviceDomWidth + "px",
+            "min-height": section.height()+"px",
+            "margin-left": "auto",
+            "margin-right": "auto",
+            "border-left": "1px solid white",
+            "border-right": "1px solid white",
+            "color": "white",
+            "font-size": "20px"
         });
-        let actionGroups=[];
-        for (let group of this.device.actionGroups.values()){
-            actionGroups.push(group);
-        }
-        actionGroups.sort(this.rankSort);
-        for (let i=0;i<actionGroups.length;i++){
-            let actionGroupDom=actionGroups[i].draw();
-            actionGroupDom.find("h2").css("marginBottom","30px");
-            let actionContainerDom=actionGroupDom.find("div.actionContainer");
-            actionContainerDom.css({
-                "display":"flex",
-                "flexWrap":"wrap",
-                "justifyContent":"space-around",
-                "width":"100%"
-            });
-            if (actionGroups.length!=1){
-                actionGroupDom.css("border","1px solid black");
-            }
-            let actions=[];
-            for (let action of actionGroups[i].actions.values()){
-                actions.push(action);
-            }
-            actions.sort(this.rankSort);
-            let actionWidth=Math.floor(containerWidth/this.activeTheme.allLines)-this.activeTheme.allLines*12;
-            for (let l=0;l<actions.length;l++){
-                let actionDom=actions[l].draw();
-                actionDom.css({
-                    "flex-basis":actionWidth+"px",
-                    "flex-grow":"1",
-                    "border":"1px solid white",
-                    "padding":"5px"
-                });
-                actionDom.find("div.value").css({
-                    "height":"30px",
-                    "background":"grey",
-                    "text-align":"center"
-                });
-                let supportActions=actions[l].supportActions;
-                if (supportActions!=null) {
-                    let supportContainerDom=actionDom.find("div.support");
-                    supportContainerDom.css({
-                        "display":"flex",
-                        "flexWrap":"wrap",
-                        "justifyContent":"space-around",
-                        "padding":"5px"
-                    });
-                   let activeSupportActions=[];
-                    for (let supportAction of supportActions.values()){
-                        let supportActionDom=supportAction.draw();
-                        supportActionDom.hide();
-                        supportActionDom.css({
-                            "border": "1px solid grey",
-                            "padding":"5px"
-                        });
-                        supportActionDom.find("div.value").css({
-                            "height": "30px",
-                            "background": "grey",
-                            "text-align":"center"
-                        });
-                        supportContainerDom.append(supportActionDom);
-                        if (supportAction.active==null) activeSupportActions.push(supportAction);
-                    }
-                    this.simpleSupportAlgorithm(activeSupportActions,actionDom,actionWidth);
-                }
-                actionContainerDom.append(actionDom);
-            }
-            deviceDom.append(actionGroupDom);
-        }
-        let section=$("section.container");
+        deviceDom.find(".currentLevelGroup").css({
+            "float":"left",
+            "width":"200px"
+        });
+        deviceDom.find(".groupContainer").css({
+            "float":"left",
+            "width":this.deviceDomWidth-200+"px",
+            "border-left":"1px solid white",
+            "min-height": section.height()+"px",
+            "box-sizing":"border-box"
+        });
+        this.simpleGroupAlgorithm();
         section.append(deviceDom);
 
     }
-    simpleSupportAlgorithm(supportActions,actionDom,actionWidth){
-        let supportContainerDom=actionDom.find("div.support");
-        let supportActionWidth=Math.floor(actionWidth/supportActions.length);
-        if (supportActionWidth<250) {
-            let w = Math.floor(actionWidth / 250);
-            supportActionWidth = Math.floor(actionWidth / w)-w*12;
+
+    simpleGroupAlgorithm() {
+        if (this.device.activeGroup.domElement != null) return this.device.activeGroup.domElement;
+        let activeGroup = this.device.activeGroup;
+        let containerWidth = this.deviceDomWidth-200;
+        let groupsInGroup = null;
+        if (activeGroup.actionGroups.size > 0) {
+            groupsInGroup = [];
+            for (let actionGroup of this.device.activeGroup.actionGroups.values()) {
+                groupsInGroup.push(actionGroup);
+            }
         }
-        else supportActionWidth-=supportActions.length*12;
+        let actions = null;
+        if (activeGroup.actions.size > 0) {
+            actions = [];
+            for (let action of activeGroup.actions.values()) {
+                actions.push(action);
+            }
+        }
+        let groupsOnTheLevel = [];
+        for (let actionGroup of activeGroup.owner.actionGroups.values()) {
+            groupsOnTheLevel.push(actionGroup);
+        }
+        if (groupsInGroup) groupsInGroup.sort(this.rankSort);
+        if (actions) actions.sort(this.rankSort);
+        groupsOnTheLevel.sort(this.rankSort);
+        let actionGroupDom = activeGroup.draw();
+        actionGroupDom.find("h2").css({
+            "padding-bottom": "10px"
+        });
+        if (groupsInGroup) {
+            let actionGroupContainerDom = actionGroupDom.find(".actionGroupContainer");
+            actionGroupContainerDom.css({
+                "display":"flex",
+                "flex-wrap":"wrap"
+            });
+            for (let i=0;i<groupsInGroup.length;i++){
+                let groupInGroupDom=$("<div class='groupInGroup' id='groupInGroup_'"+groupsInGroup[i].id+">"+groupsInGroup[i].name+"</div>");
+                groupInGroupDom.css({
+                    "flex-basis":"150px",
+                    "flex-grow": "1",
+                    "background":"red",
+                    "text-align":"center",
+                    "font-size":"30px",
+                    "cursor":"pointer",
+                    "border":"1px solid white"
+                });
+                actionGroupContainerDom.append(groupInGroupDom);
+            }
+        }
+        if (actions){
+            let actionContainerDom = actionGroupDom.find(".actionContainer");
+            actionContainerDom.css({
+                "display": "flex",
+                "flexWrap": "wrap",
+                "justifyContent": "space-around",
+                "border":"1px solid black"
+            });
+            let actionWidth = Math.floor(containerWidth / this.activeTheme.allLines) - this.activeTheme.allLines * 12;
+            for (let l = 0; l < actions.length; l++) {
+                let actionDom = actions[l].draw();
+                actionDom.css({
+                    "flex-basis": actionWidth + "px",
+                    "flex-grow": "1",
+                    "border": "1px solid white",
+                    "padding": "5px"
+                });
+                actionDom.find("div.value").css({
+                    "height": "30px",
+                    "background": "grey",
+                    "text-align": "center"
+                });
+                let supportActions = actions[l].supportActions;
+                if (supportActions != null) {
+                    let supportContainerDom = actionDom.find(".support");
+                    supportContainerDom.css({
+                        "display": "flex",
+                        "flexWrap": "wrap",
+                        "justifyContent": "space-around",
+                        "padding": "5px"
+                    });
+                    let activeSupportActions = [];
+                    for (let supportAction of supportActions.values()) {
+                        let supportActionDom = supportAction.draw();
+                        supportActionDom.hide();
+                        supportActionDom.css({
+                            "border": "1px solid grey",
+                            "padding": "5px"
+                        });
+                        supportActionDom.find(".value").css({
+                            "height": "30px",
+                            "background": "grey",
+                            "text-align": "center"
+                        });
+                        supportContainerDom.append(supportActionDom);
+                        if (supportAction.active == null) activeSupportActions.push(supportAction);
+                    }
+                    this.simpleSupportAlgorithm(activeSupportActions,actionWidth);
+                }
+                actionContainerDom.append(actionDom);
+            }
+        }
+        this.device.domElement.find(".groupContainer").append(actionGroupDom);
+        let groupsOnTheLevelContainerDom=this.device.domElement.find(".currentLevelGroup");
+        for (let i=0;i<groupsOnTheLevel.length;i++){
+            let groupOnTheLevelDom=$("<div class='groupOnTheLevel' id='groupOnTheLevel_"+groupsOnTheLevel[i].id+"'>"+groupsOnTheLevel[i].name+"</div>");
+            groupOnTheLevelDom.css({
+                "background":"#850000",
+                "font-size":"30px",
+                "cursor":"pointer",
+                "text-align":"center",
+                "border-bottom":"1px solid white"
+            });
+            groupsOnTheLevelContainerDom.append(groupOnTheLevelDom);
+        }
+    }
+
+    simpleSupportAlgorithm(supportActions,actionWidth) {
+        let supportActionWidth = Math.floor(actionWidth / supportActions.length);
+        if (supportActionWidth < 250) {
+            let w = Math.floor(actionWidth / 250);
+            supportActionWidth = Math.floor(actionWidth / w) - w * 12;
+        }
+        else supportActionWidth -= supportActions.length * 12;
         for (let m = 0; m < supportActions.length; m++) {
             let supportActionDom = supportActions[m].domElement;
             supportActionDom.css({
+                "box-sizing":"border-box",
                 "width": supportActionWidth + "px",
             });
             supportActionDom.show();
         }
     }
-    rankSort(a,b){
-        return (a.rank-b.rank);
+
+    rankSort(a, b) {
+        return (a.rank - b.rank);
     }
 }
 
 
 //Начало работы программы---------------------------------------------------------------
-let dataFromJson=JSON.parse($("#data_in_json").get(0).dataset.device);
-let drawManager=new DrawManager(new Device(dataFromJson));
+let dataFromJson = JSON.parse($("#data_in_json").get(0).dataset.device);
+var drawManager = new DrawManager(new Device(dataFromJson));
 drawManager.draw();
-drawManager.start();
+//drawManager.start();
