@@ -301,8 +301,12 @@ class MainAction extends Action {
         });
         mainActionDom.find(".value").addClass("main");
         mainActionDom.find(".newValue").addClass("main");
-        if (this.supportActions != null) {
-            mainActionDom.append("<div class='support'></div>");
+        if (this.supportActions) {
+            let supportContainerDom = $("<div class='support'></div>");
+            for (let supportAction of this.supportActions.values()) {
+                supportContainerDom.append(supportAction.draw());
+            }
+            mainActionDom.append(supportContainerDom);
         }
         if (this.isChangeable) {
             let submit = $("<div class='submit'><input type='submit' value='" + (this.submitName ? this.submitName : "Отправить") + "'></div>");
@@ -340,7 +344,7 @@ class MainAction extends Action {
         }
         if (this.format == "list" && this.supportActions != null) {
             let self = this;
-            mainActionDom.find(".newValue").change(function (event) {
+            mainActionDom.find(".newValue.main").change(function (event) {
                 let val = $(this).val();
                 let textVal = null;
                 if (self.range.has(+val)) {
@@ -358,7 +362,7 @@ class MainAction extends Action {
                     }
                 }
                 let algorithm = drawManager.activeTheme.algorithm;
-                drawManager[algorithm + "SupportAlgorithm"](supportActions,mainActionDom.width());
+                drawManager[algorithm + "SupportAlgorithm"](supportActions, mainActionDom.width());
             });
         }
         this.domElement = mainActionDom;
@@ -402,6 +406,7 @@ class ActionGroup {
                 this.actionGroups.set(+data.actionGroups[i].id, new ActionGroup(data.actionGroups[i], this, device));
             }
         }
+        this.groupsOnTheLevelDom = [];
         this.domElement = null;
     }
 
@@ -412,9 +417,39 @@ class ActionGroup {
         }
         else actionGroupDom.append("<h2>" + this.name + "</h2>");
         if (this.actionGroups.size > 0) {
-            let actionGroupContainer=$("<div class='actionGroupContainer'></div>");
-            actionGroupDom.append(actionGroupContainer);}
-        if (this.actions.size > 0)actionGroupDom.append("<div class='actionContainer'></div>");
+            let actionGroupContainer = $("<div class='actionGroupContainer'></div>");
+            let actionGroupsArr = [];
+            for (let actionGroup of this.actionGroups.values()) {
+                actionGroupsArr.push(actionGroup);
+            }
+            actionGroupsArr.sort(rankSort);
+            for (let i = 0; i < actionGroupsArr.length; i++) {
+                actionGroupContainer.append("<div class='groupInGroup' id='groupInGroup_'" + actionGroupsArr[i].id + ">" + actionGroupsArr[i].name + "</div>");
+            }
+            actionGroupDom.append(actionGroupContainer);
+        }
+        if (this.actions.size > 0) {
+            let actionContainer = $("<div class='actionContainer'></div>");
+            let actionsArr = [];
+            for (let action of this.actions.values()) {
+                actionsArr.push(action);
+            }
+            actionsArr.sort(rankSort);
+            for (let i = 0; i < actionsArr.length; i++) {
+                actionContainer.append(actionsArr[i].draw());
+            }
+            actionGroupDom.append(actionContainer);
+        }
+        if (this.owner.groupsOnTheLevelDom.length==0) {
+            let groupsOnTheLevelArr = [];
+            for (let actionGroup of this.owner.actionGroups.values()) {
+                groupsOnTheLevelArr.push(actionGroup);
+            }
+            groupsOnTheLevelArr.sort(rankSort);
+            for (let i = 0; i<groupsOnTheLevelArr.length; i++) {
+                this.owner.groupsOnTheLevelDom.push($("<div class='groupOnTheLevel owner_" + this.owner.id + "' id='groupOnTheLevel_" + groupsOnTheLevelArr[i].id + "'>" + groupsOnTheLevelArr[i].name + "</div>"));
+            }
+        }
         this.domElement = actionGroupDom;
         return actionGroupDom;
 
@@ -441,7 +476,29 @@ class Device {
     }
 
     draw() {
-        let deviceDom = $("<div class='device clearFix' id='device_" + this.id + "'><div class='path'></div><div class='currentLevelGroup'></div><div class='groupContainer'></div></div>");
+        let deviceDom = $("<div class='device clearFix' id='device_" + this.id + "'><div class='path'></div></div>");
+        let currentLevelGroupDom=$("<div class='currentLevelGroup'></div>");
+        let self=this;
+        currentLevelGroupDom.on("click",function (e) {
+            let groupOnTheLevelDom=null;
+            let target=e.target;
+            while (target!=this) {
+                let targetJQ = $(target);
+                if (targetJQ.hasClass("groupOnTheLevel")) {
+                    groupOnTheLevelDom=targetJQ;
+                    break;
+                }
+                target=target.parentNode;
+            }
+            if (!groupOnTheLevelDom) return;
+            currentLevelGroupDom.find(".groupOnTheLevel").hide();
+            self.activeGroup.domElement.hide();
+            self.activeGroup=self.actionGroups.get(+groupOnTheLevelDom.attr("id").substring(16));
+            let algorithm = drawManager.activeTheme.algorithm;
+            drawManager[algorithm + "GroupAlgorithm"]();
+        });
+        deviceDom.append(currentLevelGroupDom);
+        deviceDom.append("<div class='groupContainer'></div>");
         this.domElement = deviceDom;
         return deviceDom;
     }
@@ -453,12 +510,6 @@ class Device {
             $.post("getdata", {device_id: self.id}, self.insertValuesInActions(), 'json');
             timerId = setTimeout(update, self.updateTime);
         }, self.updateTime);
-    }
-
-    createActionGroups(actionGroups) {
-        for (let i = 0; i < actionGroups.length; i++) {
-
-        }
     }
 
     insertValuesInActions() {
@@ -520,7 +571,7 @@ class DrawManager {
         this.deviceDomWidth = document.documentElement.clientWidth - 200;
         deviceDom.css({
             "width": this.deviceDomWidth + "px",
-            "min-height": section.height()+"px",
+            "min-height": section.height() + "px",
             "margin-left": "auto",
             "margin-right": "auto",
             "border-left": "1px solid white",
@@ -529,138 +580,115 @@ class DrawManager {
             "font-size": "20px"
         });
         deviceDom.find(".currentLevelGroup").css({
-            "float":"left",
-            "width":"200px"
+            "float": "left",
+            "width": "200px"
         });
         deviceDom.find(".groupContainer").css({
-            "float":"left",
-            "width":this.deviceDomWidth-200+"px",
-            "border-left":"1px solid white",
-            "min-height": section.height()+"px",
-            "box-sizing":"border-box"
+            "float": "left",
+            "width": this.deviceDomWidth - 200 + "px",
+            "border-left": "1px solid white",
+            "min-height": section.height() + "px",
+            "box-sizing": "border-box"
         });
-        this.simpleGroupAlgorithm();
+        this[this.activeTheme.algorithm+"GroupAlgorithm"]();
         section.append(deviceDom);
 
     }
 
     simpleGroupAlgorithm() {
-        if (this.device.activeGroup.domElement != null) return this.device.activeGroup.domElement;
+        if (this.device.activeGroup.domElement) {
+            this.device.activeGroup.domElement.show();
+            this.device.domElement.find(".currentLevelGroup .owner_"+this.device.activeGroup.owner.id).show();
+            return;
+        }
         let activeGroup = this.device.activeGroup;
-        let containerWidth = this.deviceDomWidth-200;
-        let groupsInGroup = null;
-        if (activeGroup.actionGroups.size > 0) {
-            groupsInGroup = [];
-            for (let actionGroup of this.device.activeGroup.actionGroups.values()) {
-                groupsInGroup.push(actionGroup);
-            }
-        }
-        let actions = null;
-        if (activeGroup.actions.size > 0) {
-            actions = [];
-            for (let action of activeGroup.actions.values()) {
-                actions.push(action);
-            }
-        }
-        let groupsOnTheLevel = [];
-        for (let actionGroup of activeGroup.owner.actionGroups.values()) {
-            groupsOnTheLevel.push(actionGroup);
-        }
-        if (groupsInGroup) groupsInGroup.sort(this.rankSort);
-        if (actions) actions.sort(this.rankSort);
-        groupsOnTheLevel.sort(this.rankSort);
+        let containerWidth = this.deviceDomWidth - 200;
         let actionGroupDom = activeGroup.draw();
         actionGroupDom.find("h2").css({
             "padding-bottom": "10px"
         });
-        if (groupsInGroup) {
+        if (activeGroup.actionGroups.size > 0) {
             let actionGroupContainerDom = actionGroupDom.find(".actionGroupContainer");
             actionGroupContainerDom.css({
-                "display":"flex",
-                "flex-wrap":"wrap"
+                "display": "flex",
+                "flex-wrap": "wrap"
             });
-            for (let i=0;i<groupsInGroup.length;i++){
-                let groupInGroupDom=$("<div class='groupInGroup' id='groupInGroup_'"+groupsInGroup[i].id+">"+groupsInGroup[i].name+"</div>");
-                groupInGroupDom.css({
-                    "flex-basis":"150px",
-                    "flex-grow": "1",
-                    "background":"red",
-                    "text-align":"center",
-                    "font-size":"30px",
-                    "cursor":"pointer",
-                    "border":"1px solid white"
-                });
-                actionGroupContainerDom.append(groupInGroupDom);
-            }
+            actionGroupContainerDom.find(".groupInGroup").css({
+                "flex-basis": "150px",
+                "flex-grow": "1",
+                "background": "red",
+                "text-align": "center",
+                "font-size": "30px",
+                "cursor": "pointer",
+                "border": "1px solid white"
+            });
         }
-        if (actions){
+        if (activeGroup.actions.size > 0) {
             let actionContainerDom = actionGroupDom.find(".actionContainer");
             actionContainerDom.css({
                 "display": "flex",
                 "flexWrap": "wrap",
                 "justifyContent": "space-around",
-                "border":"1px solid black"
+                "border": "1px solid black"
             });
             let actionWidth = Math.floor(containerWidth / this.activeTheme.allLines) - this.activeTheme.allLines * 12;
-            for (let l = 0; l < actions.length; l++) {
-                let actionDom = actions[l].draw();
-                actionDom.css({
-                    "flex-basis": actionWidth + "px",
-                    "flex-grow": "1",
-                    "border": "1px solid white",
-                    "padding": "5px"
-                });
-                actionDom.find("div.value").css({
-                    "height": "30px",
-                    "background": "grey",
-                    "text-align": "center"
-                });
-                let supportActions = actions[l].supportActions;
-                if (supportActions != null) {
-                    let supportContainerDom = actionDom.find(".support");
-                    supportContainerDom.css({
-                        "display": "flex",
-                        "flexWrap": "wrap",
-                        "justifyContent": "space-around",
-                        "padding": "5px"
-                    });
-                    let activeSupportActions = [];
-                    for (let supportAction of supportActions.values()) {
-                        let supportActionDom = supportAction.draw();
-                        supportActionDom.hide();
-                        supportActionDom.css({
-                            "border": "1px solid grey",
-                            "padding": "5px"
-                        });
-                        supportActionDom.find(".value").css({
-                            "height": "30px",
-                            "background": "grey",
-                            "text-align": "center"
-                        });
-                        supportContainerDom.append(supportActionDom);
-                        if (supportAction.active == null) activeSupportActions.push(supportAction);
-                    }
-                    this.simpleSupportAlgorithm(activeSupportActions,actionWidth);
+            let actionDom = actionContainerDom.find(".mainAction");
+            actionDom.css({
+                "flex-basis": actionWidth + "px",
+                "flex-grow": "1",
+                "border": "1px solid white",
+                "padding": "5px"
+            });
+            actionDom.find("div.value").css({
+                "height": "30px",
+                "background": "grey",
+                "text-align": "center"
+            });
+            let supportContainerDom = actionContainerDom.find(".support");
+            supportContainerDom.css({
+                "display": "flex",
+                "flexWrap": "wrap",
+                "justifyContent": "space-around",
+                "padding": "5px"
+            });
+            let supportActionDom = supportContainerDom.find(".supportAction");
+            supportActionDom.hide();
+            supportActionDom.css({
+                "border": "1px solid grey",
+                "padding": "5px"
+            });
+            supportActionDom.find(".value").css({
+                "height": "30px",
+                "background": "grey",
+                "text-align": "center"
+            });
+            for (let action of activeGroup.actions.values()) {
+                if (!action.supportActions) continue;
+                let activeSupportActions = [];
+                for (let supportAction of action.supportActions.values()) {
+                    if (supportAction.active == null) activeSupportActions.push(supportAction);
                 }
-                actionContainerDom.append(actionDom);
+                this[this.activeTheme.algorithm+"SupportAlgorithm"](activeSupportActions, actionWidth);
             }
         }
         this.device.domElement.find(".groupContainer").append(actionGroupDom);
-        let groupsOnTheLevelContainerDom=this.device.domElement.find(".currentLevelGroup");
-        for (let i=0;i<groupsOnTheLevel.length;i++){
-            let groupOnTheLevelDom=$("<div class='groupOnTheLevel' id='groupOnTheLevel_"+groupsOnTheLevel[i].id+"'>"+groupsOnTheLevel[i].name+"</div>");
-            groupOnTheLevelDom.css({
-                "background":"#850000",
-                "font-size":"30px",
-                "cursor":"pointer",
-                "text-align":"center",
-                "border-bottom":"1px solid white"
-            });
-            groupsOnTheLevelContainerDom.append(groupOnTheLevelDom);
+        let groupsOnTheLevelContainerDom = this.device.domElement.find(".currentLevelGroup");
+        if (!groupsOnTheLevelContainerDom.find(".groupOnTheLevel").hasClass("owner_"+activeGroup.owner.id)){
+            for (let i = 0; i < activeGroup.owner.groupsOnTheLevelDom.length; i++) {
+                activeGroup.owner.groupsOnTheLevelDom[i].css({
+                    "background": "#850000",
+                    "font-size": "30px",
+                    "cursor": "pointer",
+                    "text-align": "center",
+                    "border-bottom": "1px solid white"
+                });
+                groupsOnTheLevelContainerDom.append(activeGroup.owner.groupsOnTheLevelDom[i]);
+            }
         }
+        else groupsOnTheLevelContainerDom.find(".owner_"+activeGroup.owner.id).show();
     }
 
-    simpleSupportAlgorithm(supportActions,actionWidth) {
+    simpleSupportAlgorithm(supportActions, actionWidth) {
         let supportActionWidth = Math.floor(actionWidth / supportActions.length);
         if (supportActionWidth < 250) {
             let w = Math.floor(actionWidth / 250);
@@ -670,15 +698,11 @@ class DrawManager {
         for (let m = 0; m < supportActions.length; m++) {
             let supportActionDom = supportActions[m].domElement;
             supportActionDom.css({
-                "box-sizing":"border-box",
+                "box-sizing": "border-box",
                 "width": supportActionWidth + "px",
             });
             supportActionDom.show();
         }
-    }
-
-    rankSort(a, b) {
-        return (a.rank - b.rank);
     }
 }
 
