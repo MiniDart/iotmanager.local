@@ -41,18 +41,16 @@ class Model_thing extends Model
         curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query(array('device_id' => $device_id)));
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
         $server_output = curl_exec ($curl);
-        return $this->prepare_for_browser($server_output);
+        return $server_output;
     }
     public function set_action_data(){
         $device=json_decode($_POST['newData'],true);
-        $actionGroup_count=count($device['actionGroups']);
         $resp="Error";
         $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
         if ($mysqli->connect_errno) {
             die("Не удалось подключиться к MySQL");
         }
-        for ($i=0;$i<$actionGroup_count;$i++){
-            $actions=&$device['actionGroups'][$i]['actions'];
+            $actions=&$device['actions'];
             $actions_count=count($actions);
             for ($l=0;$l<$actions_count;$l++){
                 if (isset($actions[$l]['value'])){
@@ -108,7 +106,7 @@ class Model_thing extends Model
                         }
                     }
                 }
-                if (isset($actions[$l]['id'])) unset($actions[$l]['id']);
+                /*
                 if (isset($actions[$l]['supportActions'])){
                     $support_actions=&$actions[$l]['supportActions'];
                     $support_actions_count=count($support_actions);
@@ -166,18 +164,18 @@ class Model_thing extends Model
                         }
                         unset($support_actions[$m]['id']);
                     }
-                }
+                }*/
             }
-        }
         $mysqli->close();
         $curl=curl_init();
         curl_setopt($curl, CURLOPT_URL,"http://localhost:3000/upgradeaction");
         curl_setopt($curl, CURLOPT_POST, 1);
         curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query(array('upgradeDevice' => json_encode($device))));
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        return $this->prepare_for_browser(curl_exec ($curl));
+        return curl_exec ($curl);
         
     }
+    /*
     private function prepare_for_browser($server_output){
         $current_action_data=json_decode($server_output,true);
         $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
@@ -234,4 +232,5 @@ class Model_thing extends Model
         $current_action_data=json_encode($current_action_data);
         return $current_action_data;
     }
+    */
 }

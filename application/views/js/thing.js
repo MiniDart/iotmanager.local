@@ -243,14 +243,8 @@ class SupportAction extends Action {
             let submit = $("<div class='submit'><input type='submit' value='" + (this.submitName ? this.submitName : "Отправить") + "'></div>");
             let self = this;
             submit.find("input").on("click", function (event) {
-                let resOfBuild = self.owner.buildDevice();
-                let device = resOfBuild.device;
-                let action = resOfBuild.action;
-                action.supportActions = [];
-                let supportAction = {};
-                supportAction.id = self.id;
-                supportAction.name = self.name;
-                action.supportActions.push(supportAction);
+                let device={"id":self.device.id,"actions":[]};
+                let supportAction={"id":self.id};
                 try {
                     supportAction.value = self.getValue(".newValue.support");
                 }
@@ -261,13 +255,18 @@ class SupportAction extends Action {
                     alert("Error: Choose a correct value");
                     return;
                 }
-                $.post("setaction", {'newData': JSON.stringify(device)}, self.owner.owner.owner.insertValuesInActions(), 'json');
+                device.actions.push(supportAction);
+                $.post("setaction", {'newData': JSON.stringify(device)}, self.device.insertValuesInActions(), 'json');
             });
             supportActionDom.append(submit);
         }
         supportActionDom.find(".newValue").addClass("support");
         this.domElement = supportActionDom;
         return supportActionDom;
+    }
+    setValue(val){
+        if (!this.domElement) return;
+        this.domElement.find(".value.support").text(val);
     }
 }
 
@@ -312,9 +311,8 @@ class MainAction extends Action {
             let submit = $("<div class='submit'><input type='submit' value='" + (this.submitName ? this.submitName : "Отправить") + "'></div>");
             let self = this;
             submit.find("input").on("click", function (event) {
-                let resOfBuild = self.buildDevice();
-                let device = resOfBuild.device;
-                let action = resOfBuild.action;
+               let device={"id":self.device.id,"actions":[]};
+                let action={"id":self.id};
                 try {
                     action.value = self.getValue(".newValue.main");
                 }
@@ -325,19 +323,18 @@ class MainAction extends Action {
                     alert("Error: Choose correct value");
                     return;
                 }
+                device.actions.push(action);
                 if (self.supportActions != null) {
-                    action.supportActions = [];
                     for (let supportActionSelf of self.supportActions.values()) {
                         let value;
                         if (!supportActionSelf.isChangeable || supportActionSelf.domElement.css("display") == "none" || (value = supportActionSelf.getValue(".newValue.support")) == "none") continue;
                         let supportAction = {};
                         supportAction.id = supportActionSelf.id;
-                        supportAction.name = supportActionSelf.name;
                         supportAction.value = value;
-                        action.supportActions.push(supportAction);
+                        device.actions.push(supportAction);
                     }
                 }
-                $.post("setaction", {'newData': JSON.stringify(device)}, self.owner.owner.insertValuesInActions(), 'json');
+                $.post("setaction", {'newData': JSON.stringify(device)}, self.device.insertValuesInActions(), 'json');
             });
             mainActionDom.append(submit);
 
@@ -368,20 +365,9 @@ class MainAction extends Action {
         this.domElement = mainActionDom;
         return mainActionDom;
     }
-
-    buildDevice() {
-        let device = {};
-        device.id = this.owner.owner.id;
-        device.actionGroups = [];
-        let actionGroup = {};
-        actionGroup.name = this.owner.name;
-        actionGroup.actions = [];
-        device.actionGroups.push(actionGroup);
-        let action = {};
-        action.name = this.name;
-        action.id = this.id;
-        actionGroup.actions.push(action);
-        return {"device": device, "action": action}
+    setValue(val){
+        if (!this.domElement) return;
+        this.domElement.find(".value.main").text(val);
     }
 }
 
@@ -412,6 +398,18 @@ class ActionGroup {
 
     draw() {
         let actionGroupDom = $("<div class='actionGroup' id='actionGroup_" + this.id + "'></div>");
+        let pathContainerDom=$("<div class='pathContainer'></div>");
+        let path=[];
+        path.push($("<a href='#' class='path shortcutGroup' id='path_"+this.id+"' data-id='"+this.id+"'>"+this.name+"</a>"));
+        let owner=this.owner;
+        while (owner.id!=-1){
+            path.unshift($("<a href='#' class='path shortcutGroup' id='path_"+owner.id+"' data-id='"+owner.id+"'>"+owner.name+"-> </a>"));
+            owner=owner.owner;
+        }
+        for (let i=0;i<path.length;i++){
+            pathContainerDom.append(path[i]);
+        }
+        actionGroupDom.append(pathContainerDom);
         if (this.name == null) {
             if (this.id != 0) actionGroupDom.append("<h2>Unknown name</h2>");
         }
@@ -424,7 +422,7 @@ class ActionGroup {
             }
             actionGroupsArr.sort(rankSort);
             for (let i = 0; i < actionGroupsArr.length; i++) {
-                actionGroupContainer.append("<div class='groupInGroup' id='groupInGroup_'" + actionGroupsArr[i].id + ">" + actionGroupsArr[i].name + "</div>");
+                actionGroupContainer.append("<div id='groupInGroup_"+actionGroupsArr[i].id+"' class='groupInGroup shortcutGroup' data-id='"+actionGroupsArr[i].id+"'>" + actionGroupsArr[i].name + "</div>");
             }
             actionGroupDom.append(actionGroupContainer);
         }
@@ -447,7 +445,7 @@ class ActionGroup {
             }
             groupsOnTheLevelArr.sort(rankSort);
             for (let i = 0; i<groupsOnTheLevelArr.length; i++) {
-                this.owner.groupsOnTheLevelDom.push($("<div class='groupOnTheLevel owner_" + this.owner.id + "' id='groupOnTheLevel_" + groupsOnTheLevelArr[i].id + "'>" + groupsOnTheLevelArr[i].name + "</div>"));
+                this.owner.groupsOnTheLevelDom.push($("<div class='groupOnTheLevel shortcutGroup owner_" + this.owner.id + "' id='groupOnTheLevel_" + groupsOnTheLevelArr[i].id + "' data-id='"+groupsOnTheLevelArr[i].id+"'>" + groupsOnTheLevelArr[i].name + "</div>"));
             }
         }
         this.domElement = actionGroupDom;
@@ -464,7 +462,7 @@ class Device {
         this.updateTime = +data.updateTime * 1000;
         this.actions = new Map();
         this.actionGroups = new Map();
-        let rootGroup = new ActionGroup({"id": 0, "rank": 0, "actionGroups": data.actionGroups}, null, this);
+        let rootGroup = new ActionGroup({"id": -1, "rank": 0, "actionGroups": data.actionGroups}, null, this);
         this.actionGroups.set(0, rootGroup);
         for (let actionGroup of rootGroup.actionGroups.values()) {
             if (actionGroup.rank === 0) {
@@ -476,29 +474,27 @@ class Device {
     }
 
     draw() {
-        let deviceDom = $("<div class='device clearFix' id='device_" + this.id + "'><div class='path'></div></div>");
-        let currentLevelGroupDom=$("<div class='currentLevelGroup'></div>");
+        let deviceDom = $("<div class='device clearFix' id='device_" + this.id + "'><div class='currentLevelGroup'></div><div class='groupContainer'></div></div>");
         let self=this;
-        currentLevelGroupDom.on("click",function (e) {
+        deviceDom.on("click",function (e) {
             let groupOnTheLevelDom=null;
             let target=e.target;
             while (target!=this) {
                 let targetJQ = $(target);
-                if (targetJQ.hasClass("groupOnTheLevel")) {
+                if (targetJQ.hasClass("shortcutGroup")) {
                     groupOnTheLevelDom=targetJQ;
                     break;
                 }
                 target=target.parentNode;
             }
             if (!groupOnTheLevelDom) return;
-            currentLevelGroupDom.find(".groupOnTheLevel").hide();
+            deviceDom.find(".currentLevelGroup .groupOnTheLevel").hide();
             self.activeGroup.domElement.hide();
-            self.activeGroup=self.actionGroups.get(+groupOnTheLevelDom.attr("id").substring(16));
+            self.activeGroup=self.actionGroups.get(+groupOnTheLevelDom.attr("data-id"));
             let algorithm = drawManager.activeTheme.algorithm;
             drawManager[algorithm + "GroupAlgorithm"]();
+            $.post("getdata", {device_id: self.id}, self.insertValuesInActions(), 'json');
         });
-        deviceDom.append(currentLevelGroupDom);
-        deviceDom.append("<div class='groupContainer'></div>");
         this.domElement = deviceDom;
         return deviceDom;
     }
@@ -516,21 +512,9 @@ class Device {
         let self = this;
         return function (data) {
             if (data.thing_id == self.id) {
-                let dataActionGroups = data.actionGroups;
-                for (let i = 0; i < dataActionGroups.length; i++) {
-                    let actionGroup = self.actionGroups.get(+dataActionGroups[i].id);
-                    let dataActions = dataActionGroups[i].actions;
-                    for (let l = 0; l < dataActions.length; l++) {
-                        let action = actionGroup.actions.get(+dataActions[l].id);
-                        action.domElement.find(".value").filter(".main").text(dataActions[l].value);
-                        if ("supportActions" in dataActions[l]) {
-                            let dataSupportActions = dataActions[l].supportActions;
-                            for (let n = 0; n < dataSupportActions.length; n++) {
-                                let supportAction = action.supportActions.get(+dataSupportActions[n].id);
-                                supportAction.domElement.find(".value").text(dataSupportActions[n].value);
-                            }
-                        }
-                    }
+               let actions=data.actions;
+                for (let i=0;i<actions.length;i++){
+                    self.actions.get(+actions[i].id).setValue(actions[i].value);
                 }
             }
         }
@@ -590,8 +574,8 @@ class DrawManager {
             "min-height": section.height() + "px",
             "box-sizing": "border-box"
         });
-        this[this.activeTheme.algorithm+"GroupAlgorithm"]();
         section.append(deviceDom);
+        this[this.activeTheme.algorithm+"GroupAlgorithm"]();
 
     }
 
@@ -599,6 +583,12 @@ class DrawManager {
         if (this.device.activeGroup.domElement) {
             this.device.activeGroup.domElement.show();
             this.device.domElement.find(".currentLevelGroup .owner_"+this.device.activeGroup.owner.id).show();
+            this.device.domElement.find(".currentLevelGroup .groupOnTheLevel").css({
+                "background":"#850000"
+            });
+            this.device.domElement.find("#groupOnTheLevel_"+this.device.activeGroup.id).css({
+                "background":"black"
+            });
             return;
         }
         let activeGroup = this.device.activeGroup;
@@ -662,21 +652,20 @@ class DrawManager {
                 "background": "grey",
                 "text-align": "center"
             });
-            for (let action of activeGroup.actions.values()) {
-                if (!action.supportActions) continue;
-                let activeSupportActions = [];
-                for (let supportAction of action.supportActions.values()) {
-                    if (supportAction.active == null) activeSupportActions.push(supportAction);
-                }
-                this[this.activeTheme.algorithm+"SupportAlgorithm"](activeSupportActions, actionWidth);
-            }
         }
         this.device.domElement.find(".groupContainer").append(actionGroupDom);
+        for (let action of activeGroup.actions.values()) {
+            if (!action.supportActions) continue;
+            let activeSupportActions = [];
+            for (let supportAction of action.supportActions.values()) {
+                if (supportAction.active == null) activeSupportActions.push(supportAction);
+            }
+            this[this.activeTheme.algorithm+"SupportAlgorithm"](activeSupportActions, action.domElement.width());
+        }
         let groupsOnTheLevelContainerDom = this.device.domElement.find(".currentLevelGroup");
         if (!groupsOnTheLevelContainerDom.find(".groupOnTheLevel").hasClass("owner_"+activeGroup.owner.id)){
             for (let i = 0; i < activeGroup.owner.groupsOnTheLevelDom.length; i++) {
                 activeGroup.owner.groupsOnTheLevelDom[i].css({
-                    "background": "#850000",
                     "font-size": "30px",
                     "cursor": "pointer",
                     "text-align": "center",
@@ -686,6 +675,12 @@ class DrawManager {
             }
         }
         else groupsOnTheLevelContainerDom.find(".owner_"+activeGroup.owner.id).show();
+        this.device.domElement.find(".currentLevelGroup .groupOnTheLevel").css({
+            "background":"#850000"
+        });
+        this.device.domElement.find("#groupOnTheLevel_"+this.device.activeGroup.id).css({
+            "background":"black"
+        });
     }
 
     simpleSupportAlgorithm(supportActions, actionWidth) {
