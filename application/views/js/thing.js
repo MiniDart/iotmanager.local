@@ -243,8 +243,8 @@ class SupportAction extends Action {
             let submit = $("<div class='submit'><input type='submit' value='" + (this.submitName ? this.submitName : "Отправить") + "'></div>");
             let self = this;
             submit.find("input").on("click", function (event) {
-                let device={"id":self.device.id,"actions":[]};
-                let supportAction={"id":self.id};
+                let device = {"id": self.device.id, "actions": []};
+                let supportAction = {"id": self.id};
                 try {
                     supportAction.value = self.getValue(".newValue.support");
                 }
@@ -264,7 +264,8 @@ class SupportAction extends Action {
         this.domElement = supportActionDom;
         return supportActionDom;
     }
-    setValue(val){
+
+    setValue(val) {
         if (!this.domElement) return;
         this.domElement.find(".value.support").text(val);
     }
@@ -311,8 +312,8 @@ class MainAction extends Action {
             let submit = $("<div class='submit'><input type='submit' value='" + (this.submitName ? this.submitName : "Отправить") + "'></div>");
             let self = this;
             submit.find("input").on("click", function (event) {
-               let device={"id":self.device.id,"actions":[]};
-                let action={"id":self.id};
+                let device = {"id": self.device.id, "actions": []};
+                let action = {"id": self.id};
                 try {
                     action.value = self.getValue(".newValue.main");
                 }
@@ -365,7 +366,8 @@ class MainAction extends Action {
         this.domElement = mainActionDom;
         return mainActionDom;
     }
-    setValue(val){
+
+    setValue(val) {
         if (!this.domElement) return;
         this.domElement.find(".value.main").text(val);
     }
@@ -392,21 +394,44 @@ class ActionGroup {
                 this.actionGroups.set(+data.actionGroups[i].id, new ActionGroup(data.actionGroups[i], this, device));
             }
         }
+        this.groupLevelShortcut = null;
         this.groupsOnTheLevelDom = [];
         this.domElement = null;
     }
 
     draw() {
+        let self = this;
         let actionGroupDom = $("<div class='actionGroup' id='actionGroup_" + this.id + "'></div>");
-        let pathContainerDom=$("<div class='pathContainer'></div>");
-        let path=[];
-        path.push($("<a href='#' class='path shortcutGroup' id='path_"+this.id+"' data-id='"+this.id+"'>"+this.name+"</a>"));
-        let owner=this.owner;
-        while (owner.id!=-1){
-            path.unshift($("<a href='#' class='path shortcutGroup' id='path_"+owner.id+"' data-id='"+owner.id+"'>"+owner.name+"-> </a>"));
-            owner=owner.owner;
+        let cutGroupDom = $("<div class='cutGroup' id='cutGroup_" + this.id + "'>Cut</div>");
+        cutGroupDom.on("click", function (e) {
+            if (self.owner.actionGroups.size == 1 && self.owner.id == -1) {
+                alert("Error: You can't cut this group.");
+                return;
+            }
+            self.owner.domElement = null;
+            self.owner.groupsOnTheLevelDom.splice(self.owner.groupsOnTheLevelDom.indexOf(self.groupLevelShortcut), 1);
+            self.groupLevelShortcut.remove();
+            self.groupLevelShortcut = null;
+            self.owner.actionGroups.delete(self.id);
+            if (self.owner.actionGroups.size > 0) {
+                        self.device.showNewGroup(self.owner.actionGroups.values().next().value.id);
+                        self.domElement = null;
+                        return;
+            }
+            self.device.showNewGroup(self.owner.id);
+            self.domElement = null;
+
+        });
+        actionGroupDom.append(cutGroupDom);
+        let pathContainerDom = $("<div class='pathContainer'></div>");
+        let path = [];
+        path.push($("<a href='#' class='path shortcutGroup' id='path_" + this.id + "' data-id='" + this.id + "'>" + this.name + "</a>"));
+        let owner = this.owner;
+        while (owner.id != -1) {
+            path.unshift($("<a href='#' class='path shortcutGroup' id='path_" + owner.id + "' data-id='" + owner.id + "'>" + owner.name + "-> </a>"));
+            owner = owner.owner;
         }
-        for (let i=0;i<path.length;i++){
+        for (let i = 0; i < path.length; i++) {
             pathContainerDom.append(path[i]);
         }
         actionGroupDom.append(pathContainerDom);
@@ -422,7 +447,7 @@ class ActionGroup {
             }
             actionGroupsArr.sort(rankSort);
             for (let i = 0; i < actionGroupsArr.length; i++) {
-                actionGroupContainer.append("<div id='groupInGroup_"+actionGroupsArr[i].id+"' class='groupInGroup shortcutGroup' data-id='"+actionGroupsArr[i].id+"'>" + actionGroupsArr[i].name + "</div>");
+                actionGroupContainer.append("<div id='groupInGroup_" + actionGroupsArr[i].id + "' class='groupInGroup shortcutGroup' data-id='" + actionGroupsArr[i].id + "'>" + actionGroupsArr[i].name + "</div>");
             }
             actionGroupDom.append(actionGroupContainer);
         }
@@ -438,15 +463,21 @@ class ActionGroup {
             }
             actionGroupDom.append(actionContainer);
         }
-        if (this.owner.groupsOnTheLevelDom.length==0) {
+        if (this.owner.groupsOnTheLevelDom.length == 0) {
             let groupsOnTheLevelArr = [];
             for (let actionGroup of this.owner.actionGroups.values()) {
                 groupsOnTheLevelArr.push(actionGroup);
             }
             groupsOnTheLevelArr.sort(rankSort);
-            for (let i = 0; i<groupsOnTheLevelArr.length; i++) {
-                this.owner.groupsOnTheLevelDom.push($("<div class='groupOnTheLevel shortcutGroup owner_" + this.owner.id + "' id='groupOnTheLevel_" + groupsOnTheLevelArr[i].id + "' data-id='"+groupsOnTheLevelArr[i].id+"'>" + groupsOnTheLevelArr[i].name + "</div>"));
+            for (let i = 0; i < groupsOnTheLevelArr.length; i++) {
+                groupsOnTheLevelArr[i].groupLevelShortcut = $("<div class='groupOnTheLevel shortcutGroup owner_" + this.owner.id + "' id='groupOnTheLevel_" + groupsOnTheLevelArr[i].id + "' data-id='" + groupsOnTheLevelArr[i].id + "'>" + groupsOnTheLevelArr[i].name + "</div>");
+                this.owner.groupsOnTheLevelDom.push(groupsOnTheLevelArr[i].groupLevelShortcut);
             }
+        }
+        else if (!this.groupLevelShortcut) {
+            this.groupLevelShortcut = $("<div class='groupOnTheLevel shortcutGroup owner_" + this.owner.id + "' id='groupOnTheLevel_" + this.id + "' data-id='" + this.id + "'>" + this.name + "</div>");
+            this.owner.groupsOnTheLevelDom.push(this.groupLevelShortcut);
+            this.device.find(".currentLevelGroup").append(this.groupLevelShortcut);
         }
         this.domElement = actionGroupDom;
         return actionGroupDom;
@@ -463,7 +494,6 @@ class Device {
         this.actions = new Map();
         this.actionGroups = new Map();
         let rootGroup = new ActionGroup({"id": -1, "rank": 0, "actionGroups": data.actionGroups}, null, this);
-        this.actionGroups.set(0, rootGroup);
         for (let actionGroup of rootGroup.actionGroups.values()) {
             if (actionGroup.rank === 0) {
                 this.activeGroup = actionGroup;
@@ -475,25 +505,11 @@ class Device {
 
     draw() {
         let deviceDom = $("<div class='device clearFix' id='device_" + this.id + "'><div class='currentLevelGroup'></div><div class='groupContainer'></div></div>");
-        let self=this;
-        deviceDom.on("click",function (e) {
-            let groupOnTheLevelDom=null;
-            let target=e.target;
-            while (target!=this) {
-                let targetJQ = $(target);
-                if (targetJQ.hasClass("shortcutGroup")) {
-                    groupOnTheLevelDom=targetJQ;
-                    break;
-                }
-                target=target.parentNode;
-            }
-            if (!groupOnTheLevelDom) return;
-            deviceDom.find(".currentLevelGroup .groupOnTheLevel").hide();
-            self.activeGroup.domElement.hide();
-            self.activeGroup=self.actionGroups.get(+groupOnTheLevelDom.attr("data-id"));
-            let algorithm = drawManager.activeTheme.algorithm;
-            drawManager[algorithm + "GroupAlgorithm"]();
-            $.post("getdata", {device_id: self.id}, self.insertValuesInActions(), 'json');
+        let self = this;
+        deviceDom.on("click", ".shortcutGroup", function (e) {
+            let groupOnTheLevelDom = $(this);
+            e.preventDefault();
+            self.showNewGroup(+groupOnTheLevelDom.attr("data-id"));
         });
         this.domElement = deviceDom;
         return deviceDom;
@@ -512,12 +528,21 @@ class Device {
         let self = this;
         return function (data) {
             if (data.thing_id == self.id) {
-               let actions=data.actions;
-                for (let i=0;i<actions.length;i++){
+                let actions = data.actions;
+                for (let i = 0; i < actions.length; i++) {
                     self.actions.get(+actions[i].id).setValue(actions[i].value);
                 }
             }
         }
+    }
+
+    showNewGroup(id) {
+        this.domElement.find(".currentLevelGroup .groupOnTheLevel").hide();
+        this.activeGroup.domElement.hide();
+        this.activeGroup = this.actionGroups.get(+id);
+        let algorithm = drawManager.activeTheme.algorithm;
+        drawManager[algorithm + "GroupAlgorithm"]();
+        //$.post("getdata", {device_id: this.id}, this.insertValuesInActions(), 'json');-------------------here
     }
 }
 
@@ -575,25 +600,37 @@ class DrawManager {
             "box-sizing": "border-box"
         });
         section.append(deviceDom);
-        this[this.activeTheme.algorithm+"GroupAlgorithm"]();
+        this[this.activeTheme.algorithm + "GroupAlgorithm"]();
 
     }
 
     simpleGroupAlgorithm() {
         if (this.device.activeGroup.domElement) {
             this.device.activeGroup.domElement.show();
-            this.device.domElement.find(".currentLevelGroup .owner_"+this.device.activeGroup.owner.id).show();
+            this.device.domElement.find(".currentLevelGroup .owner_" + this.device.activeGroup.owner.id).show();
             this.device.domElement.find(".currentLevelGroup .groupOnTheLevel").css({
-                "background":"#850000"
+                "background": "#850000"
             });
-            this.device.domElement.find("#groupOnTheLevel_"+this.device.activeGroup.id).css({
-                "background":"black"
+            this.device.domElement.find("#groupOnTheLevel_" + this.device.activeGroup.id).css({
+                "background": "black"
             });
             return;
         }
         let activeGroup = this.device.activeGroup;
         let containerWidth = this.deviceDomWidth - 200;
         let actionGroupDom = activeGroup.draw();
+        actionGroupDom.css({
+            "position": "relative"
+        });
+        let cutGroupDom = actionGroupDom.find(".cutGroup");
+        cutGroupDom.css({
+            "position": "absolute",
+            "right": "0",
+            "top": "0",
+            "background": "red",
+            "border": "1px solid white",
+            "cursor": "pointer"
+        });
         actionGroupDom.find("h2").css({
             "padding-bottom": "10px"
         });
@@ -660,26 +697,26 @@ class DrawManager {
             for (let supportAction of action.supportActions.values()) {
                 if (supportAction.active == null) activeSupportActions.push(supportAction);
             }
-            this[this.activeTheme.algorithm+"SupportAlgorithm"](activeSupportActions, action.domElement.width());
+            this[this.activeTheme.algorithm + "SupportAlgorithm"](activeSupportActions, action.domElement.width());
         }
         let groupsOnTheLevelContainerDom = this.device.domElement.find(".currentLevelGroup");
-        if (!groupsOnTheLevelContainerDom.find(".groupOnTheLevel").hasClass("owner_"+activeGroup.owner.id)){
+        if (!groupsOnTheLevelContainerDom.find(".groupOnTheLevel").hasClass("owner_" + activeGroup.owner.id)) {
             for (let i = 0; i < activeGroup.owner.groupsOnTheLevelDom.length; i++) {
-                activeGroup.owner.groupsOnTheLevelDom[i].css({
-                    "font-size": "30px",
-                    "cursor": "pointer",
-                    "text-align": "center",
-                    "border-bottom": "1px solid white"
-                });
                 groupsOnTheLevelContainerDom.append(activeGroup.owner.groupsOnTheLevelDom[i]);
             }
         }
-        else groupsOnTheLevelContainerDom.find(".owner_"+activeGroup.owner.id).show();
-        this.device.domElement.find(".currentLevelGroup .groupOnTheLevel").css({
-            "background":"#850000"
+        else groupsOnTheLevelContainerDom.find(".owner_" + activeGroup.owner.id).show();
+        groupsOnTheLevelContainerDom.find(".owner_" + activeGroup.owner.id).css({
+            "font-size": "30px",
+            "cursor": "pointer",
+            "text-align": "center",
+            "border-bottom": "1px solid white"
         });
-        this.device.domElement.find("#groupOnTheLevel_"+this.device.activeGroup.id).css({
-            "background":"black"
+        this.device.domElement.find(".currentLevelGroup .groupOnTheLevel").css({
+            "background": "#850000"
+        });
+        this.device.domElement.find("#groupOnTheLevel_" + this.device.activeGroup.id).css({
+            "background": "black"
         });
     }
 
