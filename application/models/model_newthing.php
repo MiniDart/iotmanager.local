@@ -41,22 +41,17 @@ class Model_newthing extends Model
         $this->thing_id=+$file['id'];
         $this->insertActionsIntoTable($file['actionGroups'], $mysqli);
         $creation_line=json_encode($file);
-        $mysqli->query("INSERT INTO things VALUES ($file[id],'$file[name]','$file[thingGroup]','$file[updateTime]','$creation_line')");
+        $res=$mysqli->query("INSERT INTO things VALUES ($file[id],'$file[name]','$file[thingGroup]','$file[updateTime]','$creation_line',null)");
+        if (!$res) echo $mysqli->error;
         $mysqli->close();
 
     }
 
-    private function insertActionsIntoTable(&$action_groups, &$mysqli, $group_owner_id = 0)
+    private function insertActionsIntoTable(&$action_groups, &$mysqli)
     {
         $action_groups_count = count($action_groups);
         for ($i = 0; $i < $action_groups_count; $i++) {
             $group =& $action_groups[$i];
-            $group_name = isset($group['name']) ? $group['name'] : null;
-            $query = "INSERT INTO action_groups(group_name,thing_id,group_owner_id,rank) VALUES ('$group_name',$this->thing_id,$group_owner_id,'$i')";
-            $mysqli->query($query);
-            $group_id = $mysqli->insert_id;
-            $group['id'] = $group_id;
-            $group['rank'] = $i;
             if (isset($group['actions'])) {
                 $actions =& $group['actions'];
                 $actions_count = count($actions);
@@ -68,10 +63,9 @@ class Model_newthing extends Model
                     $action_description = isset($action['description']) ? $action['description'] : null;
                     $submit_name = null;
                     if (isset($action['submitName'])) $submit_name = $action['submitName'];
-                    $query = "INSERT INTO actions_description(id,thing_id,action_name,format,is_changeable,action_group_id,description,submit_name,is_supported,is_need_statistics,rank) VALUES ($action[id],$this->thing_id,'$action[name]','$action[format]','$is_changeable','$group_id','$action_description','$submit_name','$is_supported','$is_need_statistics','$l')";
+                    $query = "INSERT INTO actions_description(id,thing_id,action_name,format,is_changeable,description,submit_name,is_supported,is_need_statistics) VALUES ($action[id],$this->thing_id,'$action[name]','$action[format]','$is_changeable','$action_description','$submit_name','$is_supported','$is_need_statistics')";
                     $mysqli->query($query);
                     $action_id = $action['id'];
-                    $action['rank'] = $l;
                     $action_range =& $action['range'];
                     $action_range_count = count($action_range);
                     for ($m = 0; $m < $action_range_count; $m++) {
@@ -124,7 +118,7 @@ class Model_newthing extends Model
                     }
                 }
             }
-            if (isset($group['actionGroups'])) $this->insertActionsIntoTable($group['actionGroups'], $mysqli, $group_id);
+            if (isset($group['actionGroups'])) $this->insertActionsIntoTable($group['actionGroups'], $mysqli);
         }
     }
 

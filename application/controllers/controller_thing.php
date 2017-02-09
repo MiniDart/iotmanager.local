@@ -25,6 +25,9 @@ class Controller_thing extends Controller
             $this->action_setaction();
             return;
         }
+        if ($param==="upgradeline"){
+            $this->upgrade_line();
+        }
         if ($param!=null) {
             $data=$this->model->get_data($param);
             $this->view->generate("thing_view.php","template_thing_view.php",$data);
@@ -38,5 +41,9 @@ class Controller_thing extends Controller
     function action_setaction(){
         $server_output=$this->model->set_action_data();
         $this->view->generate("actionsdata_view.php","empty_view.php",$server_output );
+    }
+    function upgrade_line(){
+        $data=$this->model->upgrade_line();
+        $this->view->generate("actionsdata_view.php","empty_view.php",$data);
     }
 }

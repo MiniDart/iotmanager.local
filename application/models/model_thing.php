@@ -18,13 +18,14 @@ class Model_thing extends Model
         if ($mysqli->connect_errno) {
             die("Не удалось подключиться к MySQL");
         }
-        $query="SELECT creation_line FROM things WHERE id=$id";
+        $query="SELECT creation_line,new_creation_line FROM things WHERE id=$id";
         if ($res=$mysqli->query($query)){
-            $data=$res->fetch_all(MYSQLI_ASSOC)[0]['creation_line'];
+            $data=$res->fetch_all(MYSQLI_ASSOC)[0];
             $res->close();
         }
         else die("Can't get results from database");
         $mysqli->close();
+        $data=$data['new_creation_line']==null?$data['creation_line']:$data['new_creation_line'];
         return $data;
 
     }
@@ -174,6 +175,16 @@ class Model_thing extends Model
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
         return curl_exec ($curl);
         
+    }
+    public function upgrade_line(){
+        $new_line=$_POST['newLine'];
+        $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
+        if ($mysqli->connect_errno) {
+            die("Не удалось подключиться к MySQL");
+        }
+        $dev=json_decode($new_line,true);
+        $query="UPDATE things SET new_creation_line='$dev[line]' WHERE id=$dev[id]";
+        return $mysqli->query($query);
     }
     /*
     private function prepare_for_browser($server_output){

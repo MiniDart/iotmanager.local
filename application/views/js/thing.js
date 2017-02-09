@@ -272,7 +272,7 @@ class SupportAction extends Action {
 }
 
 class MainAction extends Action {
-    constructor(data, owner, device) {
+    constructor(data, owner, device, rank) {
         super(data, owner, device);
         this.range = null;
         if ("range" in data) {
@@ -282,7 +282,7 @@ class MainAction extends Action {
             }
             this.range = r;
         }
-        this.rank = +data.rank;
+        this.rank = rank;
         this.supportActions = null;
         if ("support" in data) {
             let actions = new Map();
@@ -379,24 +379,26 @@ class ActionGroup {
         this.owner = owner;
         this.name = null;
         if ("name" in data) this.name = makeBigFirstLetter(data.name);
-        this.id = +data.id;
-        device.actionGroups.set(this.id, this);
-        this.rank = +data.rank;
+        this.id = this.device.getGroupId();
+        this.device.actionGroups.set(this.id, this);
         this.actions = new Map();
         this.actionGroups = new Map();
         if (data.actions) {
             for (let i = 0; i < data.actions.length; i++) {
-                this.actions.set(+data.actions[i].id, new MainAction(data.actions[i], this, device));
+                this.actions.set(+data.actions[i].id, new MainAction(data.actions[i], this, device,i));
             }
         }
         if (data.actionGroups) {
             for (let i = 0; i < data.actionGroups.length; i++) {
-                this.actionGroups.set(+data.actionGroups[i].id, new ActionGroup(data.actionGroups[i], this, device));
+                let g=new ActionGroup(data.actionGroups[i], this, device);
+                this.actionGroups.set(g.id,g);
             }
         }
         this.domElement = null;
     }
-
+    static getId(){
+        return ++ActionGroup.id;
+    }
     draw() {
         let self = this;
         let actionGroupDom = $("<div class='actionGroup clearFix' id='actionGroup_" + this.id + "'></div>");
@@ -434,9 +436,10 @@ class ActionGroup {
             }
             self.device.changeManager.typeOfChanging="insert";
             self.device.changeManager.groupToInsert=self;
+            if (self.owner.domElement) self.owner.domElement.remove();
             self.owner.domElement = null;
-            self.domElement.hide();
             for (let actionGroup of self.owner.actionGroups.values()){
+                if (actionGroup.domElement) actionGroup.domElement.remove();
                 actionGroup.domElement=null;
             }
             self.owner.actionGroups.delete(self.id);
@@ -448,6 +451,10 @@ class ActionGroup {
         }));
         editContainerDom.append($("<div class='edit active insertInto' id='groupInsertInto_"+this.id+"'>Переместить в</div>"));
         editContainerDom.append($("<div class='edit active save' id='save_"+this.id+"'>Сохранить</div>").on("click",function (e) {
+            self.device.isChangingNow=false;
+            self.device.changeManager.clear();
+            let algorithm = drawManager.activeTheme.algorithm;
+            drawManager[algorithm + "GroupAlgorithm"]();
             let device={};
             device.id=self.device.id;
             device.name=self.device.name;
@@ -455,10 +462,10 @@ class ActionGroup {
             device.updateTime=self.device.updateTime/1000+"";
             device.actionGroups=[];
             fillActionGroups(self.device.actionGroups.get(-1).actionGroups.values(),device.actionGroups);
-            dataFromJson=JSON.stringify(device);
-            self.device.domElement.remove();
-            drawManager = new DrawManager(new Device(JSON.parse(dataFromJson)));
-            drawManager.draw();
+            dataJson=JSON.stringify(device);
+            let dev={"id":self.device.id,'line': dataJson};
+            $.post("upgradeline", {"newLine":JSON.stringify(dev)}, function (res) {
+            });
             /*
             check(JSON.parse($("#data_in_json").get(0).dataset.device),device,"root");
             function check(obj1,obj2,name) {
@@ -551,25 +558,41 @@ class ActionGroup {
         }));
         editContainerDom.append($("<div class='edit active cancel' id='cancel"+this.id+"'>Отменить изменения</div>").on("click",function (e) {
             self.device.domElement.remove();
-            drawManager = new DrawManager(new Device(dataFromJson));
+            drawManager = new DrawManager(new Device(JSON.parse(dataJson)));
             drawManager.draw();
 
         }));
         editContainerDom.append($("<div class='edit insert insertInGroup' id='insertInGroup_"+this.id+"'>Вставить в гуппу</div>").on("click",function (e) {
             let group=self.device.changeManager.groupToInsert;
             self.device.changeManager.groupToInsert=null;
-            self.domElement.hide();
+            self.domElement.remove();
             self.domElement=null;
             self.actionGroups.set(group.id,group);
             group.owner=self;
             for (let actionGroup of self.actionGroups.values()){
+                if (actionGroup.domElement) actionGroup.domElement.remove();
                 actionGroup.domElement=null;
             }
             self.device.changeManager.typeOfChanging="inProcess";
             let algorithm = drawManager.activeTheme.algorithm;
             drawManager[algorithm + "GroupAlgorithm"]();
         }));
-        editContainerDom.append($("<div class='edit insert insertOnTheLevel' id='insertOnTheLevel_"+this.id+"'>Вставить на один уровень с группой</div>"))
+        editContainerDom.append($("<div class='edit insert insertOnTheLevel' id='insertOnTheLevel_"+this.id+"'>Вставить на один уровень с группой</div>").on("click",function (e) {
+            let group=self.device.changeManager.groupToInsert;
+            self.device.changeManager.groupToInsert=null;
+            group.owner=self.owner;
+            if (self.owner.domElement) self.owner.domElement.remove();
+            self.owner.domElement=null;
+            self.owner.actionGroups.set(group.id,group);
+            for (let actionGroup of self.owner.actionGroups.values()){
+                if (actionGroup.domElement) actionGroup.domElement.remove();
+                actionGroup.domElement=null;
+            }
+            self.device.activeGroup=group;
+            self.device.changeManager.typeOfChanging="inProcess";
+            let algorithm = drawManager.activeTheme.algorithm;
+            drawManager[algorithm + "GroupAlgorithm"]();
+        }));
         mainContentDom.append(editContainerDom);
         if (this.name == null) {
             if (this.id != 0) mainContentDom.append("<h2>Unknown name</h2>");
@@ -577,13 +600,8 @@ class ActionGroup {
         else mainContentDom.append("<h2>" + this.name + "</h2>");
         if (this.actionGroups.size > 0) {
             let actionGroupContainer = $("<div class='actionGroupContainer'></div>");
-            let actionGroupsArr = [];
             for (let actionGroup of this.actionGroups.values()) {
-                actionGroupsArr.push(actionGroup);
-            }
-            actionGroupsArr.sort(rankSort);
-            for (let i = 0; i < actionGroupsArr.length; i++) {
-                actionGroupContainer.append("<div id='groupInGroup_" + actionGroupsArr[i].id + "' class='groupInGroup shortcutGroup' data-id='" + actionGroupsArr[i].id + "'>" + actionGroupsArr[i].name + "</div>");
+                actionGroupContainer.append("<div id='groupInGroup_" + actionGroup.id + "' class='groupInGroup shortcutGroup' data-id='" + actionGroup.id + "'>" + actionGroup.name + "</div>");
             }
             mainContentDom.append(actionGroupContainer);
         }
@@ -623,23 +641,27 @@ class ActionGroup {
 class Device {
     constructor(data) {
         this.id = +data.id;
+        this.groupId=-2;
         this.name = makeBigFirstLetter(data.name);
         this.thingGroup = data.thingGroup;
         this.updateTime = +data.updateTime * 1000;
         this.actions = new Map();
         this.actionGroups = new Map();
-        let rootGroup = new ActionGroup({"id": -1, "rank": 0, "actionGroups": data.actionGroups}, null, this);
-        for (let actionGroup of rootGroup.actionGroups.values()) {
-            if (actionGroup.rank === 0) {
-                this.activeGroup = actionGroup;
-                break;
-            }
-        }
+        let rootGroup = new ActionGroup({"name":"first","actionGroups": data.actionGroups}, null, this);
+        this.activeGroup=this.actionGroups.get(0);
         this.isChangingNow=false;
-        this.changeManager={typeOfChanging:null,groupToInsert:null,actionToInsert:null};
+        this.changeManager={typeOfChanging:null,groupToInsert:null,actionToInsert:null,
+        clear:function () {
+            this.typeOfChanging=null;
+            this.groupToInsert=null;
+            this.actionToInsert=null;
+        }
+        };
         this.domElement = null;
     }
-
+getGroupId(){
+    return ++this.groupId;
+}
     draw() {
         let deviceDom = $("<div class='device' id='device_" + this.id + "'><div class='groupContainer'></div></div>");
         let self = this;
@@ -872,7 +894,7 @@ class DrawManager {
 
 
 //Начало работы программы---------------------------------------------------------------
-let dataFromJson = JSON.parse($("#data_in_json").get(0).dataset.device);
-var drawManager = new DrawManager(new Device(dataFromJson));
+var dataJson =$("#data_in_json").get(0).dataset.device;
+var drawManager = new DrawManager(new Device(JSON.parse(dataJson)));
 drawManager.draw();
 //drawManager.start();
