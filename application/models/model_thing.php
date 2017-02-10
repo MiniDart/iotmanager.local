@@ -23,7 +23,10 @@ class Model_thing extends Model
             $data=$res->fetch_all(MYSQLI_ASSOC)[0];
             $res->close();
         }
-        else die("Can't get results from database");
+        else {
+            echo $mysqli->error;
+            return "Error";
+        }
         $mysqli->close();
         $data=$data['new_creation_line']==null?$data['creation_line']:$data['new_creation_line'];
         return $data;
@@ -184,7 +187,21 @@ class Model_thing extends Model
         }
         $dev=json_decode($new_line,true);
         $query="UPDATE things SET new_creation_line='$dev[line]' WHERE id=$dev[id]";
-        return $mysqli->query($query);
+        if ($mysqli->query($query)) $ans="Updated";
+        else $ans="Something wrong";
+        $mysqli->close();
+        return $ans;
+    }
+    public function get_initial_line(){
+        $id=$_POST['id'];
+        $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
+        if ($mysqli->connect_errno) {
+            die("Не удалось подключиться к MySQL");
+        }
+        $query="UPDATE things SET new_creation_line=null WHERE id=$id";
+        if (!$mysqli->query($query)) echo "Something wrong in model_thing->get_initial_line";
+        $mysqli->close();
+        return $this->get_data($id);
     }
     /*
     private function prepare_for_browser($server_output){

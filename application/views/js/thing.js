@@ -449,7 +449,41 @@ class ActionGroup {
             else self.device.showNewGroup(self.owner.id);
             self.owner=null;
         }));
-        editContainerDom.append($("<div class='edit active insertInto' id='groupInsertInto_"+this.id+"'>Переместить в</div>"));
+        editContainerDom.append($("<div class='edit active insertInto' id='groupInsertInto_"+this.id+"'>Переместить в</div>").on("click",function (e) {
+            let alertDialog=self.device.domElement.find(".dialogContainer .dialog");
+            alertDialog.find("h1").text("Выберите куда хотите вставить группу");
+            let content=alertDialog.find(".content");
+            for (let actionGroup of self.device.actionGroups.values()){
+                if (actionGroup.id==self.id) continue;
+                content.append($("<div class='groupForInsert block' id='groupForInsert_"+actionGroup.id+"'>"+actionGroup.name+"</div>").on("click",function (e) {
+                    let groupForInsert=self.device.actionGroups.get(actionGroup.id);
+                    self.owner.actionGroups.delete(self.id);
+                    if (self.owner.domElement) self.owner.domElement.remove();
+                    self.owner.domElement=null;
+                    console.log(self.owner.name+"-"+self.owner.domElement);
+                    for (let group of self.owner.actionGroups.values()){
+                        if (group.domElement) group.domElement.remove();
+                        group.domElement=null;
+                    }
+                    self.owner=groupForInsert;
+                    if (groupForInsert.domElement) groupForInsert.domElement.remove();
+                    groupForInsert.domElement=null;
+                    groupForInsert.actionGroups.set(self.id,self);
+                    for (let group of groupForInsert.actionGroups.values()){
+                        if (group.domElement) group.domElement.remove();
+                        group.domElement=null;
+                    }
+                    self.device.activeGroup=self;
+                    drawManager.hideDialog();
+                    self.device.changeManager.typeOfChanging="inProcess";
+                    let algorithm = drawManager.activeTheme.algorithm;
+                    drawManager[algorithm + "GroupAlgorithm"]();
+                }));
+            }
+            let algorithm = drawManager.activeTheme.algorithm;
+            drawManager[algorithm+"ShowDialog"]("block");
+
+        }));
         editContainerDom.append($("<div class='edit active save' id='save_"+this.id+"'>Сохранить</div>").on("click",function (e) {
             self.device.isChangingNow=false;
             self.device.changeManager.clear();
@@ -485,19 +519,16 @@ class ActionGroup {
             }
             */
             function fillActionGroups(actionGroupsIn,actionGroupsOut) {
-                let rG=0;
                 for (let actionGroupIn of actionGroupsIn){
-                    let actionGroupOut={id:actionGroupIn.id,name:actionGroupIn.name,rank:rG++};
+                    let actionGroupOut={id:actionGroupIn.id,name:actionGroupIn.name};
                     if (actionGroupIn.actions.size>0){
                         actionGroupOut.actions=[];
-                        let rA=0;
                         for (let actionIn of actionGroupIn.actions.values()){
                             let actionOut={};
                             actionOut.id=actionIn.id;
                             actionOut.name=actionIn.name;
                             actionOut.isChangeable=actionIn.isChangeable+"";
                             actionOut.format=actionIn.format;
-                            actionOut.rank=rA++;
                             if (actionIn.description) actionOut.description=actionIn.description;
                             actionOut.isNeedStatistics=actionIn.isNeedStatistics+"";
                             if (actionIn.submitName) actionOut.submitName=actionIn.submitName;
@@ -556,11 +587,19 @@ class ActionGroup {
             }
 
         }));
-        editContainerDom.append($("<div class='edit active cancel' id='cancel"+this.id+"'>Отменить изменения</div>").on("click",function (e) {
+        editContainerDom.append($("<div class='edit active cancel' id='cancel"+this.id+"'>Отменить</div>").on("click",function (e) {
             self.device.domElement.remove();
             drawManager = new DrawManager(new Device(JSON.parse(dataJson)));
             drawManager.draw();
 
+        }));
+        editContainerDom.append($("<div class='edit active reset' id='reset_"+this.id+"'>Заводские настройки</div>").on("click",function (e) {
+            $.post("getinitialline",{"id":self.device.id},function (res) {
+                dataJson=res;
+                self.device.domElement.remove();
+                drawManager = new DrawManager(new Device(JSON.parse(dataJson)));
+                drawManager.draw();
+            });
         }));
         editContainerDom.append($("<div class='edit insert insertInGroup' id='insertInGroup_"+this.id+"'>Вставить в гуппу</div>").on("click",function (e) {
             let group=self.device.changeManager.groupToInsert;
@@ -647,7 +686,7 @@ class Device {
         this.updateTime = +data.updateTime * 1000;
         this.actions = new Map();
         this.actionGroups = new Map();
-        let rootGroup = new ActionGroup({"name":"first","actionGroups": data.actionGroups}, null, this);
+        let rootGroup = new ActionGroup({"name":"Корневая группа","actionGroups": data.actionGroups}, null, this);
         this.activeGroup=this.actionGroups.get(0);
         this.isChangingNow=false;
         this.changeManager={typeOfChanging:null,groupToInsert:null,actionToInsert:null,
@@ -664,6 +703,13 @@ getGroupId(){
 }
     draw() {
         let deviceDom = $("<div class='device' id='device_" + this.id + "'><div class='groupContainer'></div></div>");
+        let dialogContainerDom=$("<div class='dialogContainer'><div class='dialog'><h1></h1><div class='content'></div></div></div>");
+        let closeDom=$("<div class='close'>X</div>");
+        closeDom.on("click",function (e) {
+            drawManager.hideDialog();
+        });
+        dialogContainerDom.find(".dialog").append(closeDom);
+        deviceDom.append(dialogContainerDom);
         let self = this;
         deviceDom.on("click", ".shortcutGroup", function (e) {
             let shortcutGroup = $(this);
@@ -747,12 +793,41 @@ class DrawManager {
             "font-size": "20px"
         });
         section.append(deviceDom);
+        deviceDom.find(".dialogContainer").css({
+            "display":"flex",
+            "position":"fixed",
+            "width":"100vw",
+            "height":"100vh",
+            "background":"rgba(58, 58, 58, 0.46)",
+            "top":"0",
+            "left":"0"
+        }).hide();
+        deviceDom.find(".dialog").css({
+            "position":"relative",
+            "overflow":"auto",
+            "width":"50%",
+            "min-height":"40%",
+            "max-height":"80%",
+            "margin-left":"auto",
+            "margin-right":"auto",
+            "margin-top":"auto",
+            "margin-bottom":"auto",
+            "padding":"15px"
+        });
+        deviceDom.find(".dialog .close").css({
+           "position":"absolute",
+            "top":"0",
+            "right":"0",
+            "background":"red",
+            "cursor":"pointer"
+        });
         this[this.activeTheme.algorithm + "GroupAlgorithm"]();
 
     }
 
     simpleGroupAlgorithm() {
         if (this.device.activeGroup.domElement) {
+            console.log("simple:"+this.device.activeGroup.name+"-"+this.device.activeGroup.domElement);
             this.device.activeGroup.showEditButtons();
             this.device.activeGroup.domElement.show();
             return;
@@ -780,7 +855,8 @@ class DrawManager {
         mainContentDom.find(".editContainer").css({
             "display":"inline-flex",
             "width":"50%",
-            "flex-direction":"row-reverse"
+            "flex-direction":"row-reverse",
+            "flex-wrap":"wrap"
         });
         mainContentDom.find(".edit").css({
             "padding-left":"10px",
@@ -889,6 +965,34 @@ class DrawManager {
             });
             supportActionDom.show();
         }
+    }
+    simpleShowDialog(type){
+        let dialogContainerDom=this.device.domElement.find(".dialogContainer");
+        if (type=="block"){
+            dialogContainerDom.find(".dialog").css({
+                "background":"grey"
+            });
+            dialogContainerDom.find(".content").css({
+                "padding-top":"20px",
+                "display":"flex",
+                "flex-wrap":"wrap"
+            });
+            dialogContainerDom.find(".block").css({
+                "text-align":"center",
+                "background":"red",
+                "cursor":"pointer",
+                "border":"1px solid white",
+                "padding":"5px 10px",
+                "flex-grow":"1"
+            });
+        }
+        dialogContainerDom.show();
+    }
+    hideDialog(){
+        let dialogContainerDom=this.device.domElement.find(".dialogContainer");
+        dialogContainerDom.find(".dialog h1").text("");
+        dialogContainerDom.find(".content").empty();
+        this.device.domElement.find(".dialogContainer").hide();
     }
 }
 

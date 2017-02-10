@@ -27,6 +27,11 @@ class Controller_thing extends Controller
         }
         if ($param==="upgradeline"){
             $this->upgrade_line();
+            return;
+        }
+        if ($param==="getinitialline"){
+            $this->get_initial_line();
+            return;
         }
         if ($param!=null) {
             $data=$this->model->get_data($param);
@@ -44,6 +49,10 @@ class Controller_thing extends Controller
     }
     function upgrade_line(){
         $data=$this->model->upgrade_line();
+        $this->view->generate("actionsdata_view.php","empty_view.php",$data);
+    }
+    function get_initial_line(){
+        $data=$this->model->get_initial_line();
         $this->view->generate("actionsdata_view.php","empty_view.php",$data);
     }
 }
