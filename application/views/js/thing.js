@@ -272,7 +272,7 @@ class SupportAction extends Action {
 }
 
 class MainAction extends Action {
-    constructor(data, owner, device, rank) {
+    constructor(data, owner, device) {
         super(data, owner, device);
         this.range = null;
         if ("range" in data) {
@@ -282,7 +282,6 @@ class MainAction extends Action {
             }
             this.range = r;
         }
-        this.rank = rank;
         this.supportActions = null;
         if ("support" in data) {
             let actions = new Map();
@@ -299,6 +298,26 @@ class MainAction extends Action {
             "class": "mainAction",
             "id": "mainAction_" + this.id
         });
+        let editActionContainerDom=$("<div class='editContainerAction'></div>");
+        editActionContainerDom.append($("<div class='editAction shortcutAction' id='shortCutAction_"+this.id+"'>Создать ярлык</div>"));
+        editActionContainerDom.append($("<div class='editAction insertIntoAction' id='insertInto_"+this.id+"'>Переместить в</div>"));
+        editActionContainerDom.append($("<div class='editAction cutAction' id='cutAction_"+this.id+"'>Вырезать</div>").on("click",(e)=>{
+            this.domElement.detach();
+            this.owner.actions.delete(this.id);
+            for (let action of this.owner.actions.values()){
+                if (!action.supportActions) continue;
+                let supportActions=[];
+                for (let supportAction of action.supportActions.values()){
+                    if (supportAction.domElement.attr("display")!="none") supportActions.push(supportAction);
+                }
+                drawManager[drawManager.activeTheme.algorithm+"SupportAlgorithm"](supportActions,action.domElement.width());
+            }
+            this.device.changeManager.actionToInsert=this;
+            this.device.changeManager.typeOfChanging="insertAction";
+            this.owner.showEditButtons();
+            this.owner=null;
+        }));
+        mainActionDom.prepend(editActionContainerDom);
         mainActionDom.find(".value").addClass("main");
         mainActionDom.find(".newValue").addClass("main");
         if (this.supportActions) {
@@ -385,7 +404,7 @@ class ActionGroup {
         this.actionGroups = new Map();
         if (data.actions) {
             for (let i = 0; i < data.actions.length; i++) {
-                this.actions.set(+data.actions[i].id, new MainAction(data.actions[i], this, device,i));
+                this.actions.set(+data.actions[i].id, new MainAction(data.actions[i], this, device));
             }
         }
         if (data.actionGroups) {
@@ -396,16 +415,13 @@ class ActionGroup {
         }
         this.domElement = null;
     }
-    static getId(){
-        return ++ActionGroup.id;
-    }
     draw() {
         let self = this;
         let actionGroupDom = $("<div class='actionGroup clearFix' id='actionGroup_" + this.id + "'></div>");
         if (this.owner.actionGroups.size>1) {
             let currentLevelGroupDom = $("<div class='currentLevelGroup'></div>");
             for (let actionGroup of this.owner.actionGroups.values()) {
-                currentLevelGroupDom.append("<div class='groupOnTheLevel shortcutGroup' id='groupOnTheLevel_" + this.id+"_"+actionGroup.id+ "' data-id='" + actionGroup.id + "'>" + actionGroup.name + "</div>");
+                currentLevelGroupDom.append("<div class='groupOnTheLevel shortcutGroup' id='groupOnTheLevel_"+actionGroup.id+ "' data-id='" + actionGroup.id + "'>" + actionGroup.name + "</div>");
             }
             actionGroupDom.append(currentLevelGroupDom);
         }
@@ -460,7 +476,6 @@ class ActionGroup {
                     self.owner.actionGroups.delete(self.id);
                     if (self.owner.domElement) self.owner.domElement.remove();
                     self.owner.domElement=null;
-                    console.log(self.owner.name+"-"+self.owner.domElement);
                     for (let group of self.owner.actionGroups.values()){
                         if (group.domElement) group.domElement.remove();
                         group.domElement=null;
@@ -473,11 +488,9 @@ class ActionGroup {
                         if (group.domElement) group.domElement.remove();
                         group.domElement=null;
                     }
-                    self.device.activeGroup=self;
                     drawManager.hideDialog();
                     self.device.changeManager.typeOfChanging="inProcess";
-                    let algorithm = drawManager.activeTheme.algorithm;
-                    drawManager[algorithm + "GroupAlgorithm"]();
+                    self.device.showNewGroup(self.id);
                 }));
             }
             let algorithm = drawManager.activeTheme.algorithm;
@@ -487,8 +500,7 @@ class ActionGroup {
         editContainerDom.append($("<div class='edit active save' id='save_"+this.id+"'>Сохранить</div>").on("click",function (e) {
             self.device.isChangingNow=false;
             self.device.changeManager.clear();
-            let algorithm = drawManager.activeTheme.algorithm;
-            drawManager[algorithm + "GroupAlgorithm"]();
+            self.device.showNewGroup(self.id);
             let device={};
             device.id=self.device.id;
             device.name=self.device.name;
@@ -575,7 +587,6 @@ class ActionGroup {
                             }
                             actionGroupOut.actions.push(actionOut);
                         }
-                        actionGroupOut.actions.sort(rankSort);
                     }
                     if (actionGroupIn.actionGroups.size>0){
                         actionGroupOut.actionGroups=[];
@@ -583,7 +594,6 @@ class ActionGroup {
                     }
                     actionGroupsOut.push(actionGroupOut);
                 }
-                actionGroupsOut.sort(rankSort);
             }
 
         }));
@@ -613,8 +623,7 @@ class ActionGroup {
                 actionGroup.domElement=null;
             }
             self.device.changeManager.typeOfChanging="inProcess";
-            let algorithm = drawManager.activeTheme.algorithm;
-            drawManager[algorithm + "GroupAlgorithm"]();
+            self.device.showNewGroup(self.id);
         }));
         editContainerDom.append($("<div class='edit insert insertOnTheLevel' id='insertOnTheLevel_"+this.id+"'>Вставить на один уровень с группой</div>").on("click",function (e) {
             let group=self.device.changeManager.groupToInsert;
@@ -627,10 +636,17 @@ class ActionGroup {
                 if (actionGroup.domElement) actionGroup.domElement.remove();
                 actionGroup.domElement=null;
             }
-            self.device.activeGroup=group;
             self.device.changeManager.typeOfChanging="inProcess";
-            let algorithm = drawManager.activeTheme.algorithm;
-            drawManager[algorithm + "GroupAlgorithm"]();
+            self.device.showNewGroup(group.id);
+        }));
+        editContainerDom.append($("<div class='edit insertAction' id='insertAction_"+this.id+"'>Вставить</div>").on("click",(e)=>{
+            let a=this.device.changeManager.actionToInsert;
+            a.owner=this;
+            this.actions.set(a.id,a);
+            this.domElement.remove();
+            this.domElement=null;
+            this.device.changeManager.typeOfChanging="inProcess";
+            this.device.showNewGroup(this.id);
         }));
         mainContentDom.append(editContainerDom);
         if (this.name == null) {
@@ -646,13 +662,8 @@ class ActionGroup {
         }
         if (this.actions.size > 0) {
             let actionContainer = $("<div class='actionContainer'></div>");
-            let actionsArr = [];
             for (let action of this.actions.values()) {
-                actionsArr.push(action);
-            }
-            actionsArr.sort(rankSort);
-            for (let i = 0; i < actionsArr.length; i++) {
-                actionContainer.append(actionsArr[i].draw());
+                actionContainer.append(action.draw());
             }
             mainContentDom.append(actionContainer);
         }
@@ -664,16 +675,27 @@ class ActionGroup {
     showEditButtons(){
         if (this.device.isChangingNow) {
             this.domElement.find(".editContainer .edit").hide();
-            if (this.device.changeManager.typeOfChanging == "inProcess") {
-                this.domElement.find(".editContainer .active").show();
-            }
-            else if (this.device.changeManager.typeOfChanging=="insert"){
-                this.domElement.find(".editContainer .insert").show();
+            this.domElement.find(".editContainerAction").hide();
+            switch (this.device.changeManager.typeOfChanging){
+                case "inProcess":
+                    this.domElement.find(".editContainer .active").show();
+                    this.domElement.find(".editContainerAction").show();
+                    break;
+                case "insert":
+                    this.domElement.find(".editContainer .insert").show();
+                    this.domElement.find(".editContainerAction").hide();
+                    break;
+                case "insertAction":
+                    this.domElement.find(".editContainer .insertAction").show();
+                    this.domElement.find(".editContainerAction").hide();
+                    break;
+
             }
         }
         else {
             this.domElement.find(".editContainer .edit").hide();
             this.domElement.find(".editContainer .change").show();
+            this.domElement.find(".editContainerAction").hide();
         }
     }
 }
@@ -742,7 +764,7 @@ getGroupId(){
     }
 
     showNewGroup(id) {
-        if (this.activeGroup.domElement) this.activeGroup.domElement.hide();
+        if (this.activeGroup.domElement) this.activeGroup.domElement.detach();
         this.activeGroup = this.actionGroups.get(+id);
         let algorithm = drawManager.activeTheme.algorithm;
         drawManager[algorithm + "GroupAlgorithm"]();
@@ -827,9 +849,8 @@ class DrawManager {
 
     simpleGroupAlgorithm() {
         if (this.device.activeGroup.domElement) {
-            console.log("simple:"+this.device.activeGroup.name+"-"+this.device.activeGroup.domElement);
             this.device.activeGroup.showEditButtons();
-            this.device.activeGroup.domElement.show();
+            this.device.domElement.find(".groupContainer").append(this.device.activeGroup.domElement);
             return;
         }
         let activeGroup = this.device.activeGroup;
@@ -859,6 +880,17 @@ class DrawManager {
             "flex-wrap":"wrap"
         });
         mainContentDom.find(".edit").css({
+            "padding-left":"10px",
+            "padding-right":"10px",
+            "background": "red",
+            "border": "1px solid white",
+            "cursor": "pointer"
+        });
+        mainContentDom.find(".editContainerAction").css({
+            "text-align":"right"
+        });
+        mainContentDom.find(".editContainerAction .editAction").css({
+            "display":"inline-block",
             "padding-left":"10px",
             "padding-right":"10px",
             "background": "red",
@@ -935,7 +967,7 @@ class DrawManager {
             "border-bottom": "1px solid white",
             "background": "#850000"
         });
-        actionGroupDom.find("#groupOnTheLevel_" + activeGroup.id+"_"+activeGroup.id).css({
+        actionGroupDom.find("#groupOnTheLevel_"+activeGroup.id).css({
             "background": "black"
         });
         this.device.activeGroup.showEditButtons();
