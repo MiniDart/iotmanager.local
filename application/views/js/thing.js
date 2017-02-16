@@ -138,9 +138,8 @@ class SupportItem extends Item {
 }
 
 class Action {
-    constructor(data, owner, device) {
+    constructor(data, device) {
         this.device = device;
-        this.owner = owner;
         this.name = makeBigFirstLetter(data.name);
         this.format = data.format;
         this.isChangeable = data.isChangeable == "true";
@@ -151,7 +150,7 @@ class Action {
         device.actions.set(this.id, this);
         this.description = null;
         if ("description" in data) this.description = makeBigFirstLetter(data.description);
-        this.domElement = null;
+        this.domElement = new Map();
     }
 
     draw() {
@@ -192,7 +191,7 @@ class Action {
 
     getValue(selector) {
         if (this.format == "list") {
-            let id = +this.domElement.find(selector).val();
+            let id = +this.domElement.get(this.device.activeGroup.id).find(selector).val();
             let name;
             if (this.range.has(id)) name = this.range.get(id).name;
             else if (id == -1) name = "none";
@@ -204,7 +203,7 @@ class Action {
                 item = value;
                 break;
             }
-            let val = +this.domElement.find(selector).val();
+            let val = +this.domElement.get(this.device.activeGroup.id).find(selector).val();
             if (!item.isInRange(val)) {
                 alert("Error: Write a correct value!");
                 throw new Error("Incorrect value");
@@ -217,7 +216,8 @@ class Action {
 
 class SupportAction extends Action {
     constructor(data, owner, device) {
-        super(data, owner, device);
+        super(data, device);
+        this.owner=owner;
         this.isDisactivator = data.isDisactivator == "true";
         this.isIndividual = data.isIndividual == "true";
         this.range = null;
@@ -232,7 +232,7 @@ class SupportAction extends Action {
         if ("active" in data) this.active = data.active;
     }
 
-    draw() {
+    draw(id) {
         let supportActionDom = super.draw();
         supportActionDom.attr({
             "class": "supportAction",
@@ -261,7 +261,7 @@ class SupportAction extends Action {
             supportActionDom.append(submit);
         }
         supportActionDom.find(".newValue").addClass("support");
-        this.domElement = supportActionDom;
+        this.domElement.set(id,supportActionDom);
         return supportActionDom;
     }
 
@@ -273,7 +273,9 @@ class SupportAction extends Action {
 
 class MainAction extends Action {
     constructor(data, owner, device) {
-        super(data, owner, device);
+        super(data, device);
+        this.owners=new Map();
+        this.owners.set(owner.id,owner);
         this.range = null;
         if ("range" in data) {
             let r = new Map();
@@ -290,9 +292,10 @@ class MainAction extends Action {
             }
             this.supportActions = actions;
         }
+        this.isDescribed=false;
     }
 
-    draw() {
+    draw(id) {
         let mainActionDom = super.draw();
         mainActionDom.attr({
             "class": "mainAction",
@@ -304,20 +307,10 @@ class MainAction extends Action {
             dialogManager.setHeader("Выберите группу для копирования:");
             dialogManager.fillContent((content)=>{
                 for (let group of this.device.actionGroups.values()){
-                    if (group.id===this.owner.id||group.id===-1) continue;
+                    if (this.owners.has(group.id)||group.id===-1) continue;
                     content.append($("<div class='groupForInsert block' id='groupForInsert_"+group.id+"'>"+group.name+"</div>").on("click",(e)=>{
                         this.device.getDialogManager().hideDialog();
-                        this.domElement.remove();
-                        this.owner.actions.delete(this.id);
-                        for (let action of this.owner.actions.values()){
-                            if (!action.supportActions) continue;
-                            let supportActions=[];
-                            for (let supportAction of action.supportActions.values()){
-                                if (supportAction.domElement.attr("display")!="none") supportActions.push(supportAction);
-                            }
-                            drawManager[drawManager.activeTheme.algorithm+"SupportAlgorithm"](supportActions,action.domElement.width());
-                        }
-                        this.owner=group;
+                        this.owners.set(group.id,group);
                         group.actions.set(this.id,this);
                         if (group.domElement) group.domElement.remove();
                         group.domElement=null;
@@ -333,20 +326,23 @@ class MainAction extends Action {
             dialogManager.setHeader("Выберите группу для перемещения:");
             dialogManager.fillContent((content)=>{
                 for (let group of this.device.actionGroups.values()){
-                    if (group.id===this.owner.id||group.id===-1) continue;
+                    if (this.owners.has(group.id)||group.id===-1) continue;
                     content.append($("<div class='groupForInsert block' id='groupForInsert_"+group.id+"'>"+group.name+"</div>").on("click",(e)=>{
                         this.device.getDialogManager().hideDialog();
-                        this.domElement.remove();
-                        this.owner.actions.delete(this.id);
-                        for (let action of this.owner.actions.values()){
+                        let aG=this.device.activeGroup;
+                        this.domElement.get(aG.id).remove();
+                        this.domElement.delete(aG.id);
+                        aG.actions.delete(this.id);
+                        for (let action of aG.actions.values()){
                             if (!action.supportActions) continue;
                             let supportActions=[];
                             for (let supportAction of action.supportActions.values()){
-                                if (supportAction.domElement.attr("display")!="none") supportActions.push(supportAction);
+                                if (supportAction.domElement.get(aG.id).attr("display")!="none") supportActions.push(supportAction);
                             }
-                            drawManager[drawManager.activeTheme.algorithm+"SupportAlgorithm"](supportActions,action.domElement.width());
+                            drawManager[drawManager.activeTheme.algorithm+"SupportAlgorithm"](supportActions,action.domElement.get(aG.id).width());
                         }
-                        this.owner=group;
+                        this.owners.delete(aG.id);
+                        this.owners.set(group.id,group);
                         group.actions.set(this.id,this);
                         if (group.domElement) group.domElement.remove();
                         group.domElement=null;
@@ -358,20 +354,22 @@ class MainAction extends Action {
             dialogManager.showDialog("block");
         }));
         editActionContainerDom.append($("<div class='editAction cutAction' id='cutAction_"+this.id+"'>Вырезать</div>").on("click",(e)=>{
-            this.domElement.remove();
-            this.owner.actions.delete(this.id);
-            for (let action of this.owner.actions.values()){
+            let aG=this.device.activeGroup;
+            this.domElement.get(aG.id).remove();
+            this.domElement.delete(aG.id);
+            aG.actions.delete(this.id);
+            for (let action of aG.actions.values()){
                 if (!action.supportActions) continue;
                 let supportActions=[];
                 for (let supportAction of action.supportActions.values()){
-                    if (supportAction.domElement.attr("display")!="none") supportActions.push(supportAction);
+                    if (supportAction.domElement.get(aG.id).attr("display")!="none") supportActions.push(supportAction);
                 }
-                drawManager[drawManager.activeTheme.algorithm+"SupportAlgorithm"](supportActions,action.domElement.width());
+                drawManager[drawManager.activeTheme.algorithm+"SupportAlgorithm"](supportActions,action.domElement.get(aG.id).width());
             }
             this.device.changeManager.actionToInsert=this;
             this.device.changeManager.typeOfChanging="insertAction";
-            this.owner.showEditButtons();
-            this.owner=null;
+            aG.showEditButtons();
+            this.owners.delete(aG.id);
         }));
         mainActionDom.prepend(editActionContainerDom);
         mainActionDom.find(".value").addClass("main");
@@ -379,7 +377,7 @@ class MainAction extends Action {
         if (this.supportActions) {
             let supportContainerDom = $("<div class='support'></div>");
             for (let supportAction of this.supportActions.values()) {
-                supportContainerDom.append(supportAction.draw());
+                supportContainerDom.append(supportAction.draw(id));
             }
             mainActionDom.append(supportContainerDom);
         }
@@ -425,7 +423,7 @@ class MainAction extends Action {
                 }
                 let supportActions = [];
                 for (let supportAction of self.supportActions.values()) {
-                    supportAction.domElement.hide();
+                    supportAction.domElement.get(self.device.activeGroup.id).hide();
                     if (!supportAction.active) {
                         supportActions.push(supportAction);
                     }
@@ -438,7 +436,7 @@ class MainAction extends Action {
                 drawManager[algorithm + "SupportAlgorithm"](supportActions, mainActionDom.width());
             });
         }
-        this.domElement = mainActionDom;
+        this.domElement.set(id,mainActionDom);
         return mainActionDom;
     }
 
@@ -446,6 +444,7 @@ class MainAction extends Action {
         if (!this.domElement) return;
         this.domElement.find(".value.main").text(val);
     }
+
 }
 
 class ActionGroup {
@@ -460,7 +459,10 @@ class ActionGroup {
         this.actionGroups = new Map();
         if (data.actions) {
             for (let i = 0; i < data.actions.length; i++) {
-                this.actions.set(+data.actions[i].id, new MainAction(data.actions[i], this, device));
+                let mainAction;
+                if (data.actions[i].copy&&data.actions[i].copy=="true") mainAction=this.device.actions.has(+data.actions[i].id)?this.device.actions.get(+data.actions[i].id):null;
+                else mainAction=new MainAction(data.actions[i], this, device);
+                this.actions.set(+data.actions[i].id, mainAction);
             }
         }
         if (data.actionGroups) {
@@ -553,6 +555,51 @@ class ActionGroup {
             dialogManager.showDialog("block");
 
         }));
+        editContainerDom.append($("<div class='edit active createGroup' id='createGroup_"+this.id+"'>Создать группу</div>").on("click",(e)=>{
+            let dialogManager=self.device.getDialogManager();
+            dialogManager.setHeader("Задайте имя и расположение группы");
+            dialogManager.fillContent((content)=>{
+                content.append($("<p>Введите имя группы:</p><form name='main'>" +
+                    "<input type='text' class='newGroupName'>" +
+                    "<p>Выберите местоположение группы:</p>" +
+                    "<p><label><input type='radio' name='place' value='onTheLevel' checked>На одном уровне с группой</label></p>" +
+                    "<p><label><input type='radio' name='place' value='inGroup'>В текущую группу</label></p></form>" +
+                    "<h2>Выбранные элементы будут скопированы в новую группу, иначе будет создана пустая группа:</h2>"));
+                let actionContainer=$("<div class='newGroupActionContainer'></div>");
+                for (let action of this.device.actions.values()){
+                    if (!action.owners) continue;
+                    actionContainer.append($("<div class='newGroupAction' id='newGroupAction_"+action.id+"'><div class='outerName'>"+action.name+
+                       "</div><div class='outerCheckbox'><label class='checkbox'><input type='checkbox' name='isCopy' data-id='"+action.id+"'></label></div></div>"));
+
+                }
+                content.append(actionContainer);
+                content.append($("<input type='submit' value='Создать группу'>").on("click",(e)=>{
+                    let groupName=content.find(".newGroupName").val();
+                    if (groupName.length==0){
+                        alert("Введите имя группы!");
+                        return;
+                    }
+                    let owner=content.find("form[name=main] input[name=place]:checked").val()=="onTheLevel"?this.owner:this;
+                    let newGroup=new ActionGroup({name:groupName},owner,this.device);
+                    owner.actionGroups.set(newGroup.id,newGroup);
+                    content.find("input[name=isCopy]:checked").each((index,domElem)=>{
+                        let action=this.device.actions.get(+domElem.dataset.id);
+                        action.owners.set(newGroup.id,newGroup);
+                        newGroup.actions.set(action.id,action);
+                    });
+                    if (owner.domElement) owner.domElement.remove();
+                    owner.domElement=null;
+                    for (let actionGroup of owner.actionGroups.values()){
+                        if (actionGroup.domElement) actionGroup.domElement.remove();
+                        actionGroup.domElement=null;
+                    }
+                    this.device.changeManager.typeOfChanging="inProcess";
+                    this.device.showNewGroup(newGroup.id);
+                    dialogManager.hideDialog();
+                }));
+            });
+            dialogManager.showDialog("form");
+        }));
         editContainerDom.append($("<div class='edit active save' id='save_"+this.id+"'>Сохранить</div>").on("click",function (e) {
             self.device.isChangingNow=false;
             self.device.changeManager.clear();
@@ -564,6 +611,9 @@ class ActionGroup {
             device.updateTime=self.device.updateTime/1000+"";
             device.actionGroups=[];
             fillActionGroups(self.device.actionGroups.get(-1).actionGroups.values(),device.actionGroups);
+            for (let action of self.device.actions.values()){
+                if (action.isDescribed) action.isDescribed=false;
+            }
             dataJson=JSON.stringify(device);
             let dev={"id":self.device.id,'line': dataJson};
             $.post("upgradeline", {"newLine":JSON.stringify(dev)}, function (res) {
@@ -592,56 +642,62 @@ class ActionGroup {
                     if (actionGroupIn.actions.size>0){
                         actionGroupOut.actions=[];
                         for (let actionIn of actionGroupIn.actions.values()){
-                            let actionOut={};
-                            actionOut.id=actionIn.id;
-                            actionOut.name=actionIn.name;
-                            actionOut.isChangeable=actionIn.isChangeable+"";
-                            actionOut.format=actionIn.format;
-                            if (actionIn.description) actionOut.description=actionIn.description;
-                            actionOut.isNeedStatistics=actionIn.isNeedStatistics+"";
-                            if (actionIn.submitName) actionOut.submitName=actionIn.submitName;
-                            if (actionIn.range){
-                                actionOut.range=[];
-                                for (let itemIn of actionIn.range.values()){
-                                    let itemOut={};
-                                    itemOut.id=itemIn.id;
-                                    if (itemIn.color) itemOut.color=itemIn.color;
-                                    if (itemIn.name) itemOut.name=itemIn.name;
-                                    if (itemIn.from!=null) itemOut.from=itemIn.from+"";
-                                    if (itemIn.to!=null) itemOut.to=itemIn.to+"";
-                                    actionOut.range.push(itemOut);
-                                }
+                            if (actionIn.isDescribed){
+                                actionGroupOut.actions.push({id:actionIn.id,copy:"true"});
                             }
-                            if (actionIn.supportActions){
-                                actionOut.support=[];
-                                for (let supportActionIn of actionIn.supportActions.values()){
-                                    let supportActionOut={};
-                                    supportActionOut.id=supportActionIn.id;
-                                    supportActionOut.name=supportActionIn.name;
-                                    supportActionOut.isChangeable=supportActionIn.isChangeable+"";
-                                    supportActionOut.format=supportActionIn.format;
-                                    if (supportActionIn.isDeactivator) supportActionOut.isDeactivator=supportActionIn.isDeactivator+"";
-                                    supportActionOut.isIndividual=supportActionIn.isIndividual+"";
-                                    supportActionOut.isNeedStatistics=supportActionIn.isNeedStatistics+"";
-                                    if (supportActionIn.description) supportActionOut.description=supportActionIn.description;
-                                    if (supportActionIn.submitName) supportActionOut.submitName=supportActionIn.submitName;
-                                    if (supportActionIn.active) supportActionOut.active=supportActionIn.active;
-                                    if (supportActionIn.range){
-                                        supportActionOut.range=[];
-                                        for (let itemIn of supportActionIn.range.values()){
-                                            let itemOut={};
-                                            itemOut.id=itemIn.id;
-                                            if (itemIn.color) itemOut.color=itemIn.color;
-                                            if (itemIn.name) itemOut.name=itemIn.name;
-                                            if (itemIn.from!=null) itemOut.from=itemIn.from+"";
-                                            if (itemIn.to!=null) itemOut.to=itemIn.to+"";
-                                            supportActionOut.range.push(itemOut);
-                                        }
+                            else {
+                                let actionOut = {};
+                                actionOut.id = actionIn.id;
+                                actionOut.name = actionIn.name;
+                                actionOut.isChangeable = actionIn.isChangeable + "";
+                                actionOut.format = actionIn.format;
+                                if (actionIn.description) actionOut.description = actionIn.description;
+                                actionOut.isNeedStatistics = actionIn.isNeedStatistics + "";
+                                if (actionIn.submitName) actionOut.submitName = actionIn.submitName;
+                                if (actionIn.range) {
+                                    actionOut.range = [];
+                                    for (let itemIn of actionIn.range.values()) {
+                                        let itemOut = {};
+                                        itemOut.id = itemIn.id;
+                                        if (itemIn.color) itemOut.color = itemIn.color;
+                                        if (itemIn.name) itemOut.name = itemIn.name;
+                                        if (itemIn.from != null) itemOut.from = itemIn.from + "";
+                                        if (itemIn.to != null) itemOut.to = itemIn.to + "";
+                                        actionOut.range.push(itemOut);
                                     }
-                                    actionOut.support.push(supportActionOut);
                                 }
+                                if (actionIn.supportActions) {
+                                    actionOut.support = [];
+                                    for (let supportActionIn of actionIn.supportActions.values()) {
+                                        let supportActionOut = {};
+                                        supportActionOut.id = supportActionIn.id;
+                                        supportActionOut.name = supportActionIn.name;
+                                        supportActionOut.isChangeable = supportActionIn.isChangeable + "";
+                                        supportActionOut.format = supportActionIn.format;
+                                        if (supportActionIn.isDeactivator) supportActionOut.isDeactivator = supportActionIn.isDeactivator + "";
+                                        supportActionOut.isIndividual = supportActionIn.isIndividual + "";
+                                        supportActionOut.isNeedStatistics = supportActionIn.isNeedStatistics + "";
+                                        if (supportActionIn.description) supportActionOut.description = supportActionIn.description;
+                                        if (supportActionIn.submitName) supportActionOut.submitName = supportActionIn.submitName;
+                                        if (supportActionIn.active) supportActionOut.active = supportActionIn.active;
+                                        if (supportActionIn.range) {
+                                            supportActionOut.range = [];
+                                            for (let itemIn of supportActionIn.range.values()) {
+                                                let itemOut = {};
+                                                itemOut.id = itemIn.id;
+                                                if (itemIn.color) itemOut.color = itemIn.color;
+                                                if (itemIn.name) itemOut.name = itemIn.name;
+                                                if (itemIn.from != null) itemOut.from = itemIn.from + "";
+                                                if (itemIn.to != null) itemOut.to = itemIn.to + "";
+                                                supportActionOut.range.push(itemOut);
+                                            }
+                                        }
+                                        actionOut.support.push(supportActionOut);
+                                    }
+                                }
+                                actionGroupOut.actions.push(actionOut);
+                                actionIn.isDescribed=true;
                             }
-                            actionGroupOut.actions.push(actionOut);
                         }
                     }
                     if (actionGroupIn.actionGroups.size>0){
@@ -656,7 +712,8 @@ class ActionGroup {
         editContainerDom.append($("<div class='edit active cancel' id='cancel"+this.id+"'>Отменить</div>").on("click",function (e) {
             self.device.domElement.remove();
             drawManager = new DrawManager(new Device(JSON.parse(dataJson)));
-            drawManager.device.activeGroup=drawManager.device.actionGroups.get(self.id);
+            let activeGroup=drawManager.device.actionGroups.get(self.id)?drawManager.device.actionGroups.get(self.id):drawManager.device.actionGroups.get(0);
+            drawManager.device.activeGroup=activeGroup;
             drawManager.draw();
 
         }));
@@ -698,7 +755,7 @@ class ActionGroup {
         }));
         editContainerDom.append($("<div class='edit insertAction' id='insertAction_"+this.id+"'>Вставить</div>").on("click",(e)=>{
             let a=this.device.changeManager.actionToInsert;
-            a.owner=this;
+            a.owners.set(this.id,this);
             this.actions.set(a.id,a);
             this.domElement.remove();
             this.domElement=null;
@@ -720,7 +777,7 @@ class ActionGroup {
         if (this.actions.size > 0) {
             let actionContainer = $("<div class='actionContainer'></div>");
             for (let action of this.actions.values()) {
-                actionContainer.append(action.draw());
+                actionContainer.append(action.draw(this.id));
             }
             mainContentDom.append(actionContainer);
         }
@@ -767,6 +824,11 @@ class Device {
         this.actionGroups = new Map();
         new ActionGroup({"name":"Корневая группа","actionGroups": data.actionGroups}, null, this);
         this.activeGroup=this.actionGroups.get(0);
+        for (let group of this.actionGroups.values()){
+            for (let entry of group.actions){
+                if (!entry[1])group.actions.set(entry[0],this.actions.get(entry[0]));
+            }
+        }
         this.isChangingNow=false;
         this.changeManager={typeOfChanging:null,groupToInsert:null,actionToInsert:null,
         clear:function () {
@@ -1072,7 +1134,7 @@ class DrawManager {
             for (let supportAction of action.supportActions.values()) {
                 if (supportAction.active == null) activeSupportActions.push(supportAction);
             }
-            this[this.activeTheme.algorithm + "SupportAlgorithm"](activeSupportActions, action.domElement.width());
+            this[this.activeTheme.algorithm + "SupportAlgorithm"](activeSupportActions, action.domElement.get(activeGroup.id).width());
         }
     }
 
@@ -1084,7 +1146,7 @@ class DrawManager {
         }
         else supportActionWidth -= supportActions.length * 12;
         for (let m = 0; m < supportActions.length; m++) {
-            let supportActionDom = supportActions[m].domElement;
+            let supportActionDom = supportActions[m].domElement.get(this.device.activeGroup.id);
             supportActionDom.css({
                 "box-sizing": "border-box",
                 "width": supportActionWidth + "px",
@@ -1096,7 +1158,8 @@ class DrawManager {
         let dialogContainerDom=this.device.domElement.find(".dialogContainer");
         if (type=="block"){
             dialogContainerDom.find(".dialog").css({
-                "background":"grey"
+                "background":"grey",
+                "overflow":"auto"
             });
             dialogContainerDom.find(".content").css({
                 "padding-top":"20px",
@@ -1110,6 +1173,34 @@ class DrawManager {
                 "border":"1px solid white",
                 "padding":"5px 10px",
                 "flex-grow":"1"
+            });
+        }
+        if (type=="form"){
+            dialogContainerDom.find(".dialog").css({
+                "background":"grey",
+                "overflow":"auto"
+            });
+            dialogContainerDom.find(".newGroupActionContainer").css({
+                "padding-top":"20px",
+                "display":"flex",
+                "flex-wrap":"wrap"
+            });
+            dialogContainerDom.find(".newGroupAction").css({
+                "background":"red",
+                "border":"1px solid white",
+                "flex-grow":"1",
+                "display":"flex",
+                "min-height":"25px"
+            });
+            dialogContainerDom.find(".outerName").css({
+                "flex-grow":"1",
+                "padding":"0 10px",
+                "text-align":"center",
+                "font-size":"25px"
+            });
+            dialogContainerDom.find("input[type=submit]").css({
+                "font-size":"25px",
+                "cursor":"pointer"
             });
         }
         dialogContainerDom.show();
