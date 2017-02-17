@@ -471,6 +471,9 @@ class ActionGroup {
                 this.actionGroups.set(g.id,g);
             }
         }
+        this.wasActionSortable=false;
+        this.wasGroupSortable=false;
+        this.isChanging=false;
         this.domElement = null;
     }
     draw() {
@@ -603,7 +606,7 @@ class ActionGroup {
         editContainerDom.append($("<div class='edit active save' id='save_"+this.id+"'>Сохранить</div>").on("click",function (e) {
             self.device.isChangingNow=false;
             self.device.changeManager.clear();
-            self.device.showNewGroup(self.id);
+            self.showEditButtons();
             let device={};
             device.id=self.device.id;
             device.name=self.device.name;
@@ -788,12 +791,55 @@ class ActionGroup {
     }
     showEditButtons(){
         if (this.device.isChangingNow) {
+            /*
+            if (!this.isChanging){
+                let actionContainer=this.domElement.find(".actionContainer");
+                for (let action of this.actions.values()){
+                    action.domElement.hide();
+                    actionContainer.append($("<div class='actionAvatar' id='aV_"+action.id+"'>"+action.name+"</div>"));
+                }
+
+
+            }
+            */
             this.domElement.find(".editContainer .edit").hide();
             this.domElement.find(".editContainerAction").hide();
             switch (this.device.changeManager.typeOfChanging){
                 case "inProcess":
                     this.domElement.find(".editContainer .active").show();
                     this.domElement.find(".editContainerAction").show();
+                    if (this.actions.size>0){
+                        this.wasActionSortable=true;
+                        let sortableElem=this.domElement.find(".actionContainer");
+                        sortableElem.sortable({ tolerance:"pointer" ,helper:"clone",distance:15,update:(e,ui)=>{
+                            this.actions=new Map();
+                            for (let stringId of sortableElem.sortable("toArray")){
+                                let id=+stringId.substring(11);
+                                this.actions.set(id,this.device.actions.get(id));
+                                let action=this.actions.get(id);
+                                if (!action.supportActions) continue;
+                                let supportActions=[];
+                                for (let supportAction of action.supportActions.values()){
+                                    if (supportAction.domElement.get(this.device.activeGroup.id).attr("display")!="none") supportActions.push(supportAction);
+                                }
+                                drawManager[drawManager.activeTheme.algorithm+"SupportAlgorithm"](supportActions,action.domElement.get(this.device.activeGroup.id).width());
+                            }
+                        }});
+                    }
+                    if (this.owner.actionGroups.size>0){
+                        this.wasGroupSortable=true;
+                        let sortableElem=this.domElement.find(".currentLevelGroup");
+                        sortableElem.sortable({tolerance:"pointer",helper:"clone",distance:15,update:(e,ui)=>{
+                            this.owner.actionGroups=new Map();
+                            for (let strId of sortableElem.sortable("toArray")){
+                                let id=+strId.substring(16);
+                                this.owner.actionGroups.set(id,this.device.actionGroups.get(id));
+                                if (this.owner.actionGroups.get(id).domElement) this.owner.actionGroups.get(id).domElement.remove();
+                                this.owner.actionGroups.get(id).domElement=null;
+                            }
+                            this.device.showNewGroup(this.id);
+                        }});
+                    }
                     break;
                 case "insert":
                     this.domElement.find(".editContainer .insert").show();
@@ -810,6 +856,12 @@ class ActionGroup {
             this.domElement.find(".editContainer .edit").hide();
             this.domElement.find(".editContainer .change").show();
             this.domElement.find(".editContainerAction").hide();
+            if (this.wasActionSortable) {this.domElement.find(".actionContainer").sortable("destroy");
+            this.wasActionSortable=false;}
+            if (this.wasGroupSortable){
+                this.domElement.find(".currentLevelGroup").sortable("destroy");
+                this.wasGroupSortable=false;
+            }
         }
     }
 }
@@ -844,6 +896,7 @@ getGroupId(){
     return ++this.groupId;
 }
     draw() {
+        $("body").addClass(drawManager.activeTheme.name+"-body");
         let deviceDom = $("<div class='device' id='device_" + this.id + "'><div class='groupContainer'></div></div>");
         let dialogContainerDom=$("<div class='dialogContainer'><div class='dialog'><h1></h1><div class='content'></div></div></div>");
         let closeDom=$("<div class='close'>X</div>");
@@ -930,7 +983,7 @@ getGroupId(){
 
 class Theme {
     constructor() {
-        this.name = "Simple";
+        this.name = "normal";
         this.allLines = 2;
         this.algorithm = "simple";
         this.rules = null;
@@ -962,13 +1015,7 @@ class DrawManager {
         this.deviceDomWidth = document.documentElement.clientWidth - 200;
         deviceDom.css({
             "width": this.deviceDomWidth + "px",
-            "min-height": section.height() + "px",
-            "margin-left": "auto",
-            "margin-right": "auto",
-            "border-left": "1px solid white",
-            "border-right": "1px solid white",
-            "color": "white",
-            "font-size": "20px"
+            "min-height": section.height() + "px"
         });
         section.append(deviceDom);
         deviceDom.find(".dialogContainer").css({
@@ -1010,6 +1057,7 @@ class DrawManager {
             return;
         }
         let activeGroup = this.device.activeGroup;
+        activeGroup.isChanging=false;
         let actionGroupDom = activeGroup.draw();
         let containerWidth = this.deviceDomWidth;
         let currentLevelGroupDom=actionGroupDom.find(".currentLevelGroup");
