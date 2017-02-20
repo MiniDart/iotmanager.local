@@ -301,77 +301,6 @@ class MainAction extends Action {
             "class": "mainAction",
             "id": "mainAction_" + this.id
         });
-        let editActionContainerDom=$("<div class='editContainerAction'></div>");
-        editActionContainerDom.append($("<div class='editAction copyAction' id='copyAction_"+this.id+"'>Копировать</div>").on("click",(e)=>{
-            let dialogManager=this.device.getDialogManager();
-            dialogManager.setHeader("Выберите группу для копирования:");
-            dialogManager.fillContent((content)=>{
-                for (let group of this.device.actionGroups.values()){
-                    if (this.owners.has(group.id)||group.id===-1) continue;
-                    content.append($("<div class='groupForInsert block' id='groupForInsert_"+group.id+"'>"+group.name+"</div>").on("click",(e)=>{
-                        this.device.getDialogManager().hideDialog();
-                        this.owners.set(group.id,group);
-                        group.actions.set(this.id,this);
-                        if (group.domElement) group.domElement.remove();
-                        group.domElement=null;
-                        this.device.changeManager.typeOfChanging="inProcess";
-                        this.device.showNewGroup(group.id);
-                    }));
-                }
-            });
-            dialogManager.showDialog("block");
-        }));
-        editActionContainerDom.append($("<div class='editAction insertIntoAction' id='insertInto_"+this.id+"'>Переместить в</div>").on("click",(e)=>{
-            let dialogManager=this.device.getDialogManager();
-            dialogManager.setHeader("Выберите группу для перемещения:");
-            dialogManager.fillContent((content)=>{
-                for (let group of this.device.actionGroups.values()){
-                    if (this.owners.has(group.id)||group.id===-1) continue;
-                    content.append($("<div class='groupForInsert block' id='groupForInsert_"+group.id+"'>"+group.name+"</div>").on("click",(e)=>{
-                        this.device.getDialogManager().hideDialog();
-                        let aG=this.device.activeGroup;
-                        this.domElement.get(aG.id).remove();
-                        this.domElement.delete(aG.id);
-                        aG.actions.delete(this.id);
-                        for (let action of aG.actions.values()){
-                            if (!action.supportActions) continue;
-                            let supportActions=[];
-                            for (let supportAction of action.supportActions.values()){
-                                if (supportAction.domElement.get(aG.id).attr("display")!="none") supportActions.push(supportAction);
-                            }
-                            drawManager[drawManager.activeTheme.algorithm+"SupportAlgorithm"](supportActions,action.domElement.get(aG.id).width());
-                        }
-                        this.owners.delete(aG.id);
-                        this.owners.set(group.id,group);
-                        group.actions.set(this.id,this);
-                        if (group.domElement) group.domElement.remove();
-                        group.domElement=null;
-                        this.device.changeManager.typeOfChanging="inProcess";
-                        this.device.showNewGroup(group.id);
-                    }));
-                }
-            });
-            dialogManager.showDialog("block");
-        }));
-        editActionContainerDom.append($("<div class='editAction cutAction' id='cutAction_"+this.id+"'>Вырезать</div>").on("click",(e)=>{
-            let aG=this.device.activeGroup;
-            this.domElement.get(aG.id).remove();
-            this.domElement.delete(aG.id);
-            aG.actions.delete(this.id);
-            for (let action of aG.actions.values()){
-                if (!action.supportActions) continue;
-                let supportActions=[];
-                for (let supportAction of action.supportActions.values()){
-                    if (supportAction.domElement.get(aG.id).attr("display")!="none") supportActions.push(supportAction);
-                }
-                drawManager[drawManager.activeTheme.algorithm+"SupportAlgorithm"](supportActions,action.domElement.get(aG.id).width());
-            }
-            this.device.changeManager.actionToInsert=this;
-            this.device.changeManager.typeOfChanging="insertAction";
-            aG.showEditButtons();
-            this.owners.delete(aG.id);
-        }));
-        mainActionDom.prepend(editActionContainerDom);
         mainActionDom.find(".value").addClass("main");
         mainActionDom.find(".newValue").addClass("main");
         if (this.supportActions) {
@@ -471,9 +400,8 @@ class ActionGroup {
                 this.actionGroups.set(g.id,g);
             }
         }
-        this.wasActionSortable=false;
         this.wasGroupSortable=false;
-        this.isChanging=false;
+        this.wasShownAvatars=false;
         this.domElement = null;
     }
     draw() {
@@ -606,7 +534,11 @@ class ActionGroup {
         editContainerDom.append($("<div class='edit active save' id='save_"+this.id+"'>Сохранить</div>").on("click",function (e) {
             self.device.isChangingNow=false;
             self.device.changeManager.clear();
-            self.showEditButtons();
+            for (let group of self.device.actionGroups.values()){
+                if (group.domElement) group.domElement.remove();
+                group.domElement=null;
+            }
+            self.device.showNewGroup(self.id);
             let device={};
             device.id=self.device.id;
             device.name=self.device.name;
@@ -791,55 +723,104 @@ class ActionGroup {
     }
     showEditButtons(){
         if (this.device.isChangingNow) {
-            /*
-            if (!this.isChanging){
-                let actionContainer=this.domElement.find(".actionContainer");
-                for (let action of this.actions.values()){
-                    action.domElement.hide();
-                    actionContainer.append($("<div class='actionAvatar' id='aV_"+action.id+"'>"+action.name+"</div>"));
+            if (this.actions.size>0&&!this.wasShownAvatars){
+                let actionContainer = this.domElement.find(".actionContainer");
+                actionContainer.addClass("sortAction");
+                let actionAvatarContainerDom=$("<div class='actionAvatarContainer'></div>");
+                for (let action of this.actions.values()) {
+                    action.domElement.get(this.id).hide();
+                    let actionAvatarDom = $("<div class='actionAvatar' id='aV_" + action.id + "'><p>" + action.name + "</p></div>");
+                    let editActionContainerDom = $("<div class='editContainerAction'></div>");
+                    editActionContainerDom.append($("<div class='editAction copyAction' id='copyAction_" + action.id + "'>Копировать</div>").on("click", (e)=> {
+                        let dialogManager = this.device.getDialogManager();
+                        dialogManager.setHeader("Выберите группу для копирования:");
+                        dialogManager.fillContent((content)=> {
+                            for (let group of this.device.actionGroups.values()) {
+                                if (action.owners.has(group.id) || group.id === -1) continue;
+                                content.append($("<div class='groupForInsert block' id='groupForInsert_" + group.id + "'>" + group.name + "</div>").on("click", (e)=> {
+                                    this.device.getDialogManager().hideDialog();
+                                    action.owners.set(group.id, group);
+                                    group.actions.set(action.id, action);
+                                    if (group.domElement) group.domElement.remove();
+                                    group.domElement = null;
+                                    this.device.changeManager.typeOfChanging = "inProcess";
+                                    this.device.showNewGroup(group.id);
+                                }));
+                            }
+                        });
+                        dialogManager.showDialog("block");
+                    }));
+                    editActionContainerDom.append($("<div class='editAction insertIntoAction' id='insertInto_" + action.id + "'>Переместить в</div>").on("click", (e)=> {
+                        let dialogManager = this.device.getDialogManager();
+                        dialogManager.setHeader("Выберите группу для перемещения:");
+                        dialogManager.fillContent((content)=> {
+                            for (let group of this.device.actionGroups.values()) {
+                                if (action.owners.has(group.id) || group.id === -1) continue;
+                                content.append($("<div class='groupForInsert block' id='groupForInsert_" + group.id + "'>" + group.name + "</div>").on("click", (e)=> {
+                                    this.device.getDialogManager().hideDialog();
+                                    let aG = this.device.activeGroup;
+                                    action.domElement.get(aG.id).remove();
+                                    action.domElement.delete(aG.id);
+                                    this.domElement.find("#aV_"+action.id).remove();
+                                    aG.actions.delete(action.id);
+                                    action.owners.delete(aG.id);
+                                    action.owners.set(group.id, group);
+                                    group.actions.set(action.id, action);
+                                    if (group.domElement) group.domElement.remove();
+                                    group.domElement = null;
+                                    this.device.changeManager.typeOfChanging = "inProcess";
+                                    this.device.showNewGroup(group.id);
+                                }));
+                            }
+                        });
+                        dialogManager.showDialog("block");
+                    }));
+                    editActionContainerDom.append($("<div class='editAction cutAction' id='cutAction_" + action.id + "'>Вырезать</div>").on("click", (e)=> {
+                        let aG = this.device.activeGroup;
+                        action.domElement.get(aG.id).remove();
+                        action.domElement.delete(aG.id);
+                        aG.actions.delete(action.id);
+                        this.domElement.find("#aV_"+action.id).remove();
+                        this.device.changeManager.actionToInsert = action;
+                        this.device.changeManager.typeOfChanging = "insertAction";
+                        aG.showEditButtons();
+                        action.owners.delete(aG.id);
+                    }));
+                    actionAvatarDom.prepend(editActionContainerDom);
+                    actionAvatarContainerDom.append(actionAvatarDom);
                 }
-
-
+                actionContainer.append(actionAvatarContainerDom);
+                let sortableElem=this.domElement.find(".actionAvatarContainer");
+                sortableElem.sortable({ tolerance:"pointer",distance:15,update:(e,ui)=>{
+                    this.actions=new Map();
+                    for (let stringId of sortableElem.sortable("toArray")){
+                        let id=+stringId.substring(3);
+                        this.actions.set(id,this.device.actions.get(id));
+                    }
+                }});
+                this.wasShownAvatars=true;
             }
-            */
+            if (this.owner.actionGroups.size>0&&!this.wasGroupSortable){
+                this.wasGroupSortable=true;
+                let sortableElem=this.domElement.find(".currentLevelGroup");
+                sortableElem.sortable({tolerance:"pointer",distance:15,update:(e,ui)=>{
+                    this.owner.actionGroups=new Map();
+                    for (let strId of sortableElem.sortable("toArray")){
+                        let id=+strId.substring(16);
+                        this.owner.actionGroups.set(id,this.device.actionGroups.get(id));
+                        if (id==this.id) continue;
+                        if (this.owner.actionGroups.get(id).domElement) this.owner.actionGroups.get(id).domElement.remove();
+                        this.owner.actionGroups.get(id).domElement=null;
+                    }
+                    this.device.showNewGroup(this.id);
+                }});
+            }
             this.domElement.find(".editContainer .edit").hide();
             this.domElement.find(".editContainerAction").hide();
             switch (this.device.changeManager.typeOfChanging){
                 case "inProcess":
                     this.domElement.find(".editContainer .active").show();
                     this.domElement.find(".editContainerAction").show();
-                    if (this.actions.size>0){
-                        this.wasActionSortable=true;
-                        let sortableElem=this.domElement.find(".actionContainer");
-                        sortableElem.sortable({ tolerance:"pointer" ,helper:"clone",distance:15,update:(e,ui)=>{
-                            this.actions=new Map();
-                            for (let stringId of sortableElem.sortable("toArray")){
-                                let id=+stringId.substring(11);
-                                this.actions.set(id,this.device.actions.get(id));
-                                let action=this.actions.get(id);
-                                if (!action.supportActions) continue;
-                                let supportActions=[];
-                                for (let supportAction of action.supportActions.values()){
-                                    if (supportAction.domElement.get(this.device.activeGroup.id).attr("display")!="none") supportActions.push(supportAction);
-                                }
-                                drawManager[drawManager.activeTheme.algorithm+"SupportAlgorithm"](supportActions,action.domElement.get(this.device.activeGroup.id).width());
-                            }
-                        }});
-                    }
-                    if (this.owner.actionGroups.size>0){
-                        this.wasGroupSortable=true;
-                        let sortableElem=this.domElement.find(".currentLevelGroup");
-                        sortableElem.sortable({tolerance:"pointer",helper:"clone",distance:15,update:(e,ui)=>{
-                            this.owner.actionGroups=new Map();
-                            for (let strId of sortableElem.sortable("toArray")){
-                                let id=+strId.substring(16);
-                                this.owner.actionGroups.set(id,this.device.actionGroups.get(id));
-                                if (this.owner.actionGroups.get(id).domElement) this.owner.actionGroups.get(id).domElement.remove();
-                                this.owner.actionGroups.get(id).domElement=null;
-                            }
-                            this.device.showNewGroup(this.id);
-                        }});
-                    }
                     break;
                 case "insert":
                     this.domElement.find(".editContainer .insert").show();
@@ -856,12 +837,6 @@ class ActionGroup {
             this.domElement.find(".editContainer .edit").hide();
             this.domElement.find(".editContainer .change").show();
             this.domElement.find(".editContainerAction").hide();
-            if (this.wasActionSortable) {this.domElement.find(".actionContainer").sortable("destroy");
-            this.wasActionSortable=false;}
-            if (this.wasGroupSortable){
-                this.domElement.find(".currentLevelGroup").sortable("destroy");
-                this.wasGroupSortable=false;
-            }
         }
     }
 }
@@ -896,7 +871,6 @@ getGroupId(){
     return ++this.groupId;
 }
     draw() {
-        $("body").addClass(drawManager.activeTheme.name+"-body");
         let deviceDom = $("<div class='device' id='device_" + this.id + "'><div class='groupContainer'></div></div>");
         let dialogContainerDom=$("<div class='dialogContainer'><div class='dialog'><h1></h1><div class='content'></div></div></div>");
         let closeDom=$("<div class='close'>X</div>");
@@ -1005,6 +979,7 @@ class DrawManager {
     }
 
     draw() {
+        $("body").addClass(drawManager.activeTheme.name+"-theme");
         $("h1.device_name").text(this.device.name);
         this[this.activeTheme.algorithm + "Algorithm"]();
     }
@@ -1018,34 +993,7 @@ class DrawManager {
             "min-height": section.height() + "px"
         });
         section.append(deviceDom);
-        deviceDom.find(".dialogContainer").css({
-            "display":"flex",
-            "position":"fixed",
-            "width":"100vw",
-            "height":"100vh",
-            "background":"rgba(58, 58, 58, 0.46)",
-            "top":"0",
-            "left":"0"
-        }).hide();
-        deviceDom.find(".dialog").css({
-            "position":"relative",
-            "overflow":"auto",
-            "width":"50%",
-            "min-height":"40%",
-            "max-height":"80%",
-            "margin-left":"auto",
-            "margin-right":"auto",
-            "margin-top":"auto",
-            "margin-bottom":"auto",
-            "padding":"15px"
-        });
-        deviceDom.find(".dialog .close").css({
-           "position":"absolute",
-            "top":"0",
-            "right":"0",
-            "background":"red",
-            "cursor":"pointer"
-        });
+        deviceDom.find(".dialogContainer").hide();
         this[this.activeTheme.algorithm + "GroupAlgorithm"]();
 
     }
@@ -1063,118 +1011,29 @@ class DrawManager {
         let currentLevelGroupDom=actionGroupDom.find(".currentLevelGroup");
         if (currentLevelGroupDom.length>0){
             containerWidth=this.deviceDomWidth-200;
-            currentLevelGroupDom.css({
-                "float":"left",
-                "width":"200px"
-            });
         }
         let mainContentDom=actionGroupDom.find(".mainContent");
 
         mainContentDom.css({
-            "float":"left",
             "width": containerWidth + "px",
-            "border-left": "1px solid white",
-            "min-height": $("section.container").height() + "px",
-            "box-sizing": "border-box"
+            "min-height": $("section.container").height() + "px"
         });
-        mainContentDom.find(".editContainer").css({
-            "display":"inline-flex",
-            "width":"50%",
-            "flex-direction":"row-reverse",
-            "flex-wrap":"wrap"
-        });
-        mainContentDom.find(".edit").css({
-            "padding-left":"10px",
-            "padding-right":"10px",
-            "background": "red",
-            "border": "1px solid white",
-            "cursor": "pointer"
-        });
-        mainContentDom.find(".editContainerAction").css({
-            "text-align":"right"
-        });
-        mainContentDom.find(".editContainerAction .editAction").css({
-            "display":"inline-block",
-            "padding-left":"10px",
-            "padding-right":"10px",
-            "background": "red",
-            "border": "1px solid white",
-            "cursor": "pointer"
-        });
-        mainContentDom.find(".pathContainer").css({
-            "display":"inline-block",
-            "width":"50%"
-        });
-        mainContentDom.find("h2").css({
-            "padding-bottom": "10px"
-        });
-        if (activeGroup.actionGroups.size > 0) {
-            let actionGroupContainerDom = mainContentDom.find(".actionGroupContainer");
-            actionGroupContainerDom.css({
-                "display": "flex",
-                "flex-wrap": "wrap"
-            });
-            actionGroupContainerDom.find(".groupInGroup").css({
-                "flex-basis": "150px",
-                "flex-grow": "1",
-                "background": "red",
-                "text-align": "center",
-                "font-size": "30px",
-                "cursor": "pointer",
-                "border": "1px solid white"
-            });
-        }
         if (activeGroup.actions.size > 0) {
             let actionContainerDom = mainContentDom.find(".actionContainer");
-            actionContainerDom.css({
-                "display": "flex",
-                "flexWrap": "wrap",
-                "justifyContent": "space-around",
-                "border": "1px solid black"
-            });
             let actionWidth = Math.floor(containerWidth / this.activeTheme.allLines) - this.activeTheme.allLines * 12;
             let actionDom = actionContainerDom.find(".mainAction");
             actionDom.css({
-                "flex-basis": actionWidth + "px",
-                "flex-grow": "1",
-                "border": "1px solid white",
-                "padding": "5px"
+                "flex-basis": actionWidth + "px"
             });
-            actionDom.find("div.value").css({
-                "height": "30px",
-                "background": "grey",
-                "text-align": "center"
-            });
-            let supportContainerDom = actionContainerDom.find(".support");
-            supportContainerDom.css({
-                "display": "flex",
-                "flexWrap": "wrap",
-                "justifyContent": "space-around",
-                "padding": "5px"
-            });
-            let supportActionDom = supportContainerDom.find(".supportAction");
+            let supportActionDom = mainContentDom.find(".supportAction");
             supportActionDom.hide();
-            supportActionDom.css({
-                "border": "1px solid grey",
-                "padding": "5px"
-            });
-            supportActionDom.find(".value").css({
-                "height": "30px",
-                "background": "grey",
-                "text-align": "center"
-            });
         }
-        actionGroupDom.find(".groupOnTheLevel").css({
-            "font-size": "30px",
-            "cursor": "pointer",
-            "text-align": "center",
-            "border-bottom": "1px solid white",
-            "background": "#850000"
-        });
         actionGroupDom.find("#groupOnTheLevel_"+activeGroup.id).css({
             "background": "black"
         });
-        this.device.activeGroup.showEditButtons();
+        activeGroup.wasShownAvatars=false;
+        activeGroup.wasGroupSortable=false;
+        activeGroup.showEditButtons();
         this.device.domElement.find(".groupContainer").append(actionGroupDom);
         for (let action of activeGroup.actions.values()) {
             if (!action.supportActions) continue;
@@ -1196,7 +1055,6 @@ class DrawManager {
         for (let m = 0; m < supportActions.length; m++) {
             let supportActionDom = supportActions[m].domElement.get(this.device.activeGroup.id);
             supportActionDom.css({
-                "box-sizing": "border-box",
                 "width": supportActionWidth + "px",
             });
             supportActionDom.show();
@@ -1205,51 +1063,10 @@ class DrawManager {
     simpleShowDialog(type){
         let dialogContainerDom=this.device.domElement.find(".dialogContainer");
         if (type=="block"){
-            dialogContainerDom.find(".dialog").css({
-                "background":"grey",
-                "overflow":"auto"
-            });
-            dialogContainerDom.find(".content").css({
-                "padding-top":"20px",
-                "display":"flex",
-                "flex-wrap":"wrap"
-            });
-            dialogContainerDom.find(".block").css({
-                "text-align":"center",
-                "background":"red",
-                "cursor":"pointer",
-                "border":"1px solid white",
-                "padding":"5px 10px",
-                "flex-grow":"1"
-            });
+            dialogContainerDom.find(".content").addClass("block-content");
         }
         if (type=="form"){
-            dialogContainerDom.find(".dialog").css({
-                "background":"grey",
-                "overflow":"auto"
-            });
-            dialogContainerDom.find(".newGroupActionContainer").css({
-                "padding-top":"20px",
-                "display":"flex",
-                "flex-wrap":"wrap"
-            });
-            dialogContainerDom.find(".newGroupAction").css({
-                "background":"red",
-                "border":"1px solid white",
-                "flex-grow":"1",
-                "display":"flex",
-                "min-height":"25px"
-            });
-            dialogContainerDom.find(".outerName").css({
-                "flex-grow":"1",
-                "padding":"0 10px",
-                "text-align":"center",
-                "font-size":"25px"
-            });
-            dialogContainerDom.find("input[type=submit]").css({
-                "font-size":"25px",
-                "cursor":"pointer"
-            });
+            dialogContainerDom.find(".content").addClass("form-content");
         }
         dialogContainerDom.show();
     }
