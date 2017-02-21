@@ -178,6 +178,19 @@ font-size:25px;
 font-size:25px;
 cursor:pointer;
 }
+.normal-theme .dialogContainer .string-content{
+    padding: 20px;
+}
+.normal-theme .dialogContainer.error{
+    background: rgba(215, 11, 0, 0.5);
+}
+.normal-theme .dialogContainer.error .content{
+    text-align: center;
+    padding: 20px;
+}
+.normal-theme .dialogContainer.error h1{
+    color: red;
+}
 .normal-theme .mainContent .actionAvatar{
     background: rgba(143, 22, 31, 1);
     border: 1px solid whitesmoke;

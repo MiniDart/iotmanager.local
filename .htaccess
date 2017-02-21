@@ -6,3 +6,10 @@ RewriteRule .* index.php [L]
 php_value display_errors 1
 php_value display_startup_errors 1
 php_value error_reporting E_ALL
+<IfModule mod_headers.c>
+  Header set Cache-Control "no-store, no-cache"
+</IfModule>
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresDefault "now"
+</IfModule>
