@@ -27,9 +27,19 @@ class Model_thing extends Model
             echo $mysqli->error;
             return "Error";
         }
+        $query="SELECT id,thing_name FROM things";
+        if ($res=$mysqli->query($query)){
+            $things=json_encode($res->fetch_all(MYSQLI_ASSOC));
+            $res->close();
+        }
+        else {
+            echo $mysqli->error;
+            return "Error";
+        }
         $mysqli->close();
         $data=$data['new_creation_line']==null?$data['creation_line']:$data['new_creation_line'];
-        return $data;
+        $resp='{"creation_line":'.$data.',"devices":'.$things.'}';
+        return $resp;
 
     }
 

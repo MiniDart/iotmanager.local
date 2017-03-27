@@ -1,5 +1,4 @@
 <header>
-    <h1 class="device_name"></h1>
 </header>
 <section class="container">
         <?php

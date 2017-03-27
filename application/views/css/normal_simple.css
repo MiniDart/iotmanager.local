@@ -6,6 +6,9 @@ body.normal-theme{
     height: 90px;
     border-bottom: 2px solid white;;
 }
+.normal-theme body{
+    overflow: scroll;
+}
 .normal-theme h1{
     margin-top: 20px;
     text-align: center;
@@ -35,6 +38,17 @@ border-left: 1px solid white;
 border-right: 1px solid white;
 color: white;
 font-size: 20px;
+}
+.normal-theme .deviceShortcutContainer{
+    float: left;
+    width: 200px;
+}
+.normal-theme .deviceShortcut{
+    font-size: 30px;
+    cursor: pointer;
+    text-align: center;
+    border-bottom: 1px solid white;
+    background: #850000;
 }
 .normal-theme .dialogContainer{
 display:flex;

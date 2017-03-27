@@ -408,7 +408,7 @@ class ActionGroup {
     }
     draw() {
         let self = this;
-        let actionGroupDom = $("<div class='actionGroup clearFix' id='actionGroup_" + this.id + "'></div>");
+        let actionGroupDom = $("<div class='actionGroup' id='actionGroup_" + this.id + "'></div>");
         if (this.owner.actionGroups.size>1) {
             let currentLevelGroupDom = $("<div class='currentLevelGroup'></div>");
             for (let actionGroup of this.owner.actionGroups.values()) {
@@ -596,8 +596,10 @@ class ActionGroup {
             for (let action of self.device.actions.values()){
                 if (action.isDescribed) action.isDescribed=false;
             }
-            dataJson=JSON.stringify(device);
-            let dev={"id":self.device.id,'line': dataJson};
+            let json_dev=JSON.stringify(device);
+            dataJson='{"devices":'+JSON.stringify(self.device.devices)+',';
+            dataJson+='"creation_line":'+json_dev+'}';
+            let dev={"id":self.device.id,'line': json_dev};
             $.post("upgradeline", {"newLine":JSON.stringify(dev)}, function (res) {
             });
             /*
@@ -898,7 +900,9 @@ class ActionGroup {
     }
 }
 class Device {
-    constructor(data) {
+    constructor(data_json) {
+        this.devices=data_json.devices;
+        let data=data_json.creation_line;
         this.id = +data.id;
         this.groupId=-2;
         this.name = makeBigFirstLetter(data.name);
@@ -1049,16 +1053,18 @@ class DrawManager {
 
     draw() {
         $("body").addClass(drawManager.activeTheme.name+"-theme");
-        $("h1.device_name").text(this.device.name);
+        let deviceShortcutContainerDom=$("<div class='deviceShortcutContainer'></div>");
+        for (let device of this.device.devices){
+            deviceShortcutContainerDom.append($("<div class='deviceShortcut' id='deviceShortcut_"+device.id+"'>"+makeBigFirstLetter(device.thing_name)+"</div>"));
+        }
         this[this.activeTheme.algorithm + "Algorithm"]();
     }
 
     simpleAlgorithm() {
         let deviceDom = this.device.draw();
         let section = $("section.container");
-        this.deviceDomWidth = document.documentElement.clientWidth - 200;
+        this.deviceDomWidth = document.documentElement.clientWidth;
         deviceDom.css({
-            "width": this.deviceDomWidth + "px",
             "min-height": section.height() + "px"
         });
         section.append(deviceDom);
@@ -1076,10 +1082,14 @@ class DrawManager {
         let activeGroup = this.device.activeGroup;
         activeGroup.isChanging=false;
         let actionGroupDom = activeGroup.draw();
-        let containerWidth = this.deviceDomWidth;
+        actionGroupDom.addClass("clearFix");
+        let containerWidth =this.deviceDomWidth;
+        actionGroupDom.css({
+            "width":containerWidth+"px"
+        });
         let currentLevelGroupDom=actionGroupDom.find(".currentLevelGroup");
         if (currentLevelGroupDom.length>0){
-            containerWidth=this.deviceDomWidth-200;
+            containerWidth-=201;
         }
         let mainContentDom=actionGroupDom.find(".mainContent");
         mainContentDom.css({
