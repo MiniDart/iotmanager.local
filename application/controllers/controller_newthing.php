@@ -14,7 +14,7 @@ class Controller_newthing extends Controller
         $this->model=new Model_newthing();
     }
 
-    function action_index($param=null)
+    function index($param=null)
     {
         // TODO: Implement action_index() method.
         $data=$_POST['new_thing'];

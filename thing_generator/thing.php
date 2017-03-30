@@ -9,21 +9,8 @@
 </head>
 <body>
 <h1>Генератор вещей</h1>
-<div class="container">
-    <table>
-        <tr>
-<td>Введите уникальный ID:</td><td><input class="characteristics" name="id" type="text"></td>
-            </tr>
-        <tr>
-<td>Введите имя:</td><td><input class="characteristics" name="name" type="text"></td>
-            </tr>
-        <tr>
-    <td>Введите группу:</td><td><input class="characteristics" name="thingGroup" type="text"></td>
-        </tr>
-        </table>
-<p>Введите одно действие вещи в формате: имя, формат, возможность_изменения(0||1), важность_характеристики(число), список режимов(если они есть, в формате-режим1:режим2:режим3...):</p>
-<p class="input"><input class="characteristics" type="text"> <button class="add">Добавить</button></p>
-</div>
+<p>Введите json строку, описывающую устройство:</p>
+<textarea rows="25" cols="100"></textarea><br/>
 <button id="create">Создать вещь</button>
 </body>
 </html>

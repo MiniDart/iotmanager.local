@@ -14,10 +14,27 @@ class Controller_allthings extends Controller
         $this->model=new Model_allthings();
     }
 
-    function action_index($param=null)
+    function index($param=null)
     {
         // TODO: Implement action_index() method.
-        $data=$this->model->get_data();
+        $request_method=$_SERVER['REQUEST_METHOD'];
+        switch ($request_method){
+            case "GET":
+                $this->get();
+                break;
+            case "POST":
+                $this->post();
+                break;
+        }
+    }
+    function get(){
+        $data=$this->model->get();
         $this->view->generate('allthings_view.php', 'template_allthings_view.php',$data);
+    }
+    function post(){
+        $data=$_POST['new_thing'];
+        $result=$this->model->post($data);
+        if ($result!=null) echo "Thing was created";
+        else echo " Fail to create thing!!!";
     }
 }

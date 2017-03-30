@@ -11,7 +11,5 @@
     <script defer src=<?php echo DOMAIN_NAME."jquery-ui-1.12.1.custom/jquery-ui.min.js"?>></script>
     <title>Thing</title>
 </head>
-<body>
 <?php include 'application/views/'.$content_view; ?>
-</body>
 </html>

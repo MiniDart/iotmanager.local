@@ -8,7 +8,9 @@
  */
 abstract class Model
 {
-    abstract public function get_data($param=null);
-    abstract public function set_data($file=null);
+    abstract public function get($param=null);
+    abstract public function put($param=null);
+    abstract public function post($param=null);
+    abstract public function delete($param=null);
 
 }

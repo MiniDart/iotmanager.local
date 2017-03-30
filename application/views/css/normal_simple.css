@@ -3,7 +3,6 @@ body.normal-theme{
 }
 .normal-theme header{
     padding-top: 1px;
-    height: 90px;
     border-bottom: 2px solid white;;
 }
 .normal-theme body{
@@ -40,15 +39,18 @@ color: white;
 font-size: 20px;
 }
 .normal-theme .deviceShortcutContainer{
-    float: left;
-    width: 200px;
+    border-right: 1px solid white;
+    border-left: 1px solid white;
+    border-top: 1px solid white;
+    padding: 10px 0;
 }
 .normal-theme .deviceShortcut{
     font-size: 30px;
     cursor: pointer;
     text-align: center;
     border-bottom: 1px solid white;
-    background: #850000;
+    background: white;
+    text-decoration: none;
 }
 .normal-theme .dialogContainer{
 display:flex;

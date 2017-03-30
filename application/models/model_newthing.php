@@ -47,6 +47,26 @@ class Model_newthing extends Model
 
     }
 
+    public function get($param = null)
+    {
+        // TODO: Implement get() method.
+    }
+
+    public function put($param = null)
+    {
+        // TODO: Implement put() method.
+    }
+
+    public function post($param = null)
+    {
+        // TODO: Implement post() method.
+    }
+
+    public function delete($param = null)
+    {
+        // TODO: Implement delete() method.
+    }
+
     private function insertActionsIntoTable(&$action_groups, &$mysqli)
     {
         $action_groups_count = count($action_groups);

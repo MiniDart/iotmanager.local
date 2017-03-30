@@ -9,9 +9,10 @@
 class Controller_creatething extends Controller
 {
 
-    function action_index($param=null)
+    function index($param=null)
     {
         // TODO: Implement action_index() method.
         include 'thing_generator/thing.php';
     }
+    
 }

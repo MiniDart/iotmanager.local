@@ -243,7 +243,7 @@ class SupportAction extends Action {
             let submit = $("<div class='submit'><input type='submit' value='" + (this.submitName ? this.submitName : "Отправить") + "'></div>");
             let self = this;
             submit.find("input").on("click", function (event) {
-                let device = {"id": self.device.id, "actions": []};
+                let actions = [];
                 let supportAction = {"id": self.id};
                 try {
                     supportAction.value = self.getValue(".newValue.support");
@@ -255,8 +255,14 @@ class SupportAction extends Action {
                     alert("Error: Choose a correct value");
                     return;
                 }
-                device.actions.push(supportAction);
-                $.post("setaction", {'newData': JSON.stringify(device)}, self.device.insertValuesInActions(), 'json');
+                actions.push(supportAction);
+                $.ajax({
+                    url: self.device.id,
+                    type: 'PUT',
+                    success: self.device.insertValuesInActions(),
+                    data: {'newData': JSON.stringify(actions)},
+                    contentType: 'json'
+                });
             });
             supportActionDom.append(submit);
         }
@@ -265,9 +271,9 @@ class SupportAction extends Action {
         return supportActionDom;
     }
 
-    setValue(val) {
-        if (!this.domElement) return;
-        this.domElement.find(".value.support").text(val);
+    setValue(val,groupId) {
+        if (!this.domElement.has(groupId)) return;
+        this.domElement.get(groupId).find(".value.support").text(val);
     }
 }
 
@@ -314,7 +320,7 @@ class MainAction extends Action {
             let submit = $("<div class='submit'><input type='submit' value='" + (this.submitName ? this.submitName : "Отправить") + "'></div>");
             let self = this;
             submit.find("input").on("click", function (event) {
-                let device = {"id": self.device.id, "actions": []};
+                let actions = [];
                 let action = {"id": self.id};
                 try {
                     action.value = self.getValue(".newValue.main");
@@ -326,18 +332,25 @@ class MainAction extends Action {
                     alert("Error: Choose correct value");
                     return;
                 }
-                device.actions.push(action);
+                actions.push(action);
                 if (self.supportActions != null) {
                     for (let supportActionSelf of self.supportActions.values()) {
                         let value;
-                        if (!supportActionSelf.isChangeable || supportActionSelf.domElement.css("display") == "none" || (value = supportActionSelf.getValue(".newValue.support")) == "none") continue;
+                        if (!supportActionSelf.isChangeable || supportActionSelf.domElement.get(self.device.activeGroup.id).css("display") == "none" || (value = supportActionSelf.getValue(".newValue.support")) == "none") continue;
                         let supportAction = {};
                         supportAction.id = supportActionSelf.id;
                         supportAction.value = value;
-                        device.actions.push(supportAction);
+                        actions.push(supportAction);
                     }
                 }
-                $.post("setaction", {'newData': JSON.stringify(device)}, self.device.insertValuesInActions(), 'json');
+                $.ajax({
+                    url: self.device.id,
+                    type: 'PUT',
+                    success: (data)=>{console.log(data)},
+                    data: {'newData': JSON.stringify(actions)},
+                    contentType: 'json'
+                });
+                //$.post("setaction", {'newData': JSON.stringify(device)}, self.device.insertValuesInActions(), 'json');
             });
             mainActionDom.append(submit);
 
@@ -369,13 +382,12 @@ class MainAction extends Action {
         return mainActionDom;
     }
 
-    setValue(val) {
-        if (!this.domElement) return;
-        this.domElement.find(".value.main").text(val);
+    setValue(val,groupId) {
+        if (!this.domElement.has(groupId)) return;
+        this.domElement.get(groupId).find(".value.main").text(val);
     }
 
 }
-
 class ActionGroup {
     constructor(data, owner, device) {
         this.device = device;
@@ -403,8 +415,12 @@ class ActionGroup {
                 this.actionGroups.set(g.id,g);
             }
         }
+        this.jsonForUpdateActions=null;
+        this.timerId;
         this.wasGroupSortable=false;
         this.domElement = null;
+        this.isStarted=false;
+
     }
     draw() {
         let self = this;
@@ -433,8 +449,7 @@ class ActionGroup {
         editContainerDom.append($("<div class='edit change' id='change_"+this.id+"'>Изменить</div>").on("click",function (e) {
             self.device.isChangingNow=true;
             self.device.changeManager.typeOfChanging="inProcess";
-            let algorithm = drawManager.activeTheme.algorithm;
-            drawManager[algorithm + "GroupAlgorithm"]();
+            self.device.showNewGroup(self.id);
         }));
         editContainerDom.append($("<div class='edit cut active' id='cut" + this.id + "'>Вырезать</div>").on("click", function (e) {
             if (self.owner.actionGroups.size == 1 && self.owner.id == -1) {
@@ -694,19 +709,17 @@ class ActionGroup {
 
         }));
         editContainerDom.append($("<div class='edit active cancel' id='cancel"+this.id+"'>Отменить</div>").on("click",function (e) {
-            self.device.domElement.remove();
-            drawManager = new DrawManager(new Device(JSON.parse(dataJson)));
+            drawManager.bodyDom.empty();
+            startDevice();
             let activeGroup=drawManager.device.actionGroups.get(self.id)?drawManager.device.actionGroups.get(self.id):drawManager.device.actionGroups.get(0);
-            drawManager.device.activeGroup=activeGroup;
-            drawManager.draw();
+            this.device.showNewGroup(activeGroup.id);
 
         }));
         editContainerDom.append($("<div class='edit active reset' id='reset_"+this.id+"'>Заводские настройки</div>").on("click",function (e) {
             $.post("getinitialline",{"id":self.device.id},function (res) {
                 dataJson=res;
-                self.device.domElement.remove();
-                drawManager = new DrawManager(new Device(JSON.parse(dataJson)));
-                drawManager.draw();
+                drawManager.bodyDom.empty();
+                startDevice();
             });
         }));
         editContainerDom.append($("<div class='edit insert insertInGroup' id='insertInGroup_"+this.id+"'>Вставить в гуппу</div>").on("click",function (e) {
@@ -898,6 +911,42 @@ class ActionGroup {
             this.domElement.find(".editContainerAction").hide();
         }
     }
+    startUpdate(){
+        if (this.isStarted) return;
+        let self = this;
+        this.isStarted=true;
+        $.get(this.device.id, {actions:this.jsonForUpdateActions}, this.insertValuesInActions(),'json');
+        this.timerId = setTimeout(function update() {
+            $.get(self.device.id, {actions:self.jsonForUpdateActions}, self.insertValuesInActions(),'json');
+            this.timerId = setTimeout(update, self.device.updateTime);
+        }, self.device.updateTime);
+    }
+    stopUpdate(){
+        if (!this.isStarted) return;
+        this.isStarted=false;
+        clearTimeout(this.timerId);
+    }
+    insertValuesInActions() {
+        let self = this;
+        return function (data) {
+                let actions = data;
+                for (let i = 0; i < actions.length; i++) {
+                    self.device.actions.get(+actions[i].id).setValue(actions[i].value,self.id);
+                }
+        }
+    }
+    saveActionsInJson(){
+        let allActions=[];
+        for (let action of this.actions.values()){
+            allActions.push(action.id);
+            if (action.supportActions){
+                for (let supportAction of action.supportActions.values()){
+                    allActions.push(supportAction.id);
+                }
+            }
+        }
+        this.jsonForUpdateActions=JSON.stringify(allActions);
+    }
 }
 class Device {
     constructor(data_json) {
@@ -912,7 +961,7 @@ class Device {
         this.actionGroups = new Map();
         new ActionGroup({"name":"Корневая группа","actionGroups": data.actionGroups}, null, this);
         this.activeGroup=this.actionGroups.get(0);
-        for (let group of this.actionGroups.values()){
+        for (let group of this.actionGroups.values()){//находим copy-null-actions и присваиваем оригинал, а также формируем json-строку для получения текущего состояния action-ов
             for (let entry of group.actions){
                 if (!entry[1]){
                     let mainAction=this.actions.get(entry[0]);
@@ -954,34 +1003,19 @@ getGroupId(){
         return deviceDom;
     }
 
-    updateOnTime() {
-        let self = this;
-        $.post("getdata", {device_id: self.id}, this.insertValuesInActions(), 'json');
-        let timerId = setTimeout(function update() {
-            $.post("getdata", {device_id: self.id}, self.insertValuesInActions(), 'json');
-            timerId = setTimeout(update, self.updateTime);
-        }, self.updateTime);
-    }
-
-    insertValuesInActions() {
-        let self = this;
-        return function (data) {
-            if (data.thing_id == self.id) {
-                let actions = data.actions;
-                for (let i = 0; i < actions.length; i++) {
-                    self.actions.get(+actions[i].id).setValue(actions[i].value);
-                }
-            }
-        }
-    }
+    
 
     showNewGroup(id) {
-        if (this.activeGroup.domElement) this.activeGroup.domElement.detach();
-        this.activeGroup = this.actionGroups.get(+id);
+        if (id!=null) {
+            if (this.activeGroup.domElement) this.activeGroup.domElement.detach();
+            if (this.activeGroup) this.activeGroup.stopUpdate();
+            this.activeGroup = this.actionGroups.get(+id);
+        }
         let algorithm = drawManager.activeTheme.algorithm;
         drawManager[algorithm + "GroupAlgorithm"]();
-        //$.post("getdata", {device_id: this.id}, this.insertValuesInActions(), 'json');-------------------here
+        if (!this.isChangingNow) this.activeGroup.startUpdate();
     }
+
     getDialogManager(){
         if (this.dialogManager!=null) return this.dialogManager;
         let self=this;
@@ -1045,18 +1079,20 @@ class DrawManager {
         this.activeTheme = this.themes[0];
         this.deviceDomWidth = null;
         this.dialogManager=null;
-    }
-
-    start() {
-        this.device.updateOnTime();
+        this.bodyDom=null;
     }
 
     draw() {
-        $("body").addClass(drawManager.activeTheme.name+"-theme");
+        this.bodyDom=$("body");
+        this.bodyDom.addClass(drawManager.activeTheme.name+"-theme");
+        this.bodyDom.append($("<header></header>"));
+        this.bodyDom.append($("<section class='container'></section>"));
+        this.bodyDom.append($("<footer></footer>"));
         let deviceShortcutContainerDom=$("<div class='deviceShortcutContainer'></div>");
         for (let device of this.device.devices){
-            deviceShortcutContainerDom.append($("<div class='deviceShortcut' id='deviceShortcut_"+device.id+"'>"+makeBigFirstLetter(device.thing_name)+"</div>"));
+            deviceShortcutContainerDom.append($("<a class='deviceShortcut' id='deviceShortcut_"+device.id+"' href='http://iotmanager.local/"+device.id+"'>"+makeBigFirstLetter(device.thing_name)+"</a>"));
         }
+        $("header").append("<h1>"+this.device.name+"</h1>").append(deviceShortcutContainerDom);
         this[this.activeTheme.algorithm + "Algorithm"]();
     }
 
@@ -1069,8 +1105,7 @@ class DrawManager {
         });
         section.append(deviceDom);
         deviceDom.find(".dialogContainer").hide();
-        this[this.activeTheme.algorithm + "GroupAlgorithm"]();
-
+        this.device.showNewGroup(null);
     }
 
     simpleGroupAlgorithm() {
@@ -1089,7 +1124,7 @@ class DrawManager {
         });
         let currentLevelGroupDom=actionGroupDom.find(".currentLevelGroup");
         if (currentLevelGroupDom.length>0){
-            containerWidth-=201;
+            containerWidth-=202;
         }
         let mainContentDom=actionGroupDom.find(".mainContent");
         mainContentDom.css({
@@ -1112,6 +1147,7 @@ class DrawManager {
         activeGroup.wasShownAvatars=false;
         activeGroup.wasGroupSortable=false;
         activeGroup.showEditButtons();
+        activeGroup.saveActionsInJson();
         this.device.domElement.find(".groupContainer").append(actionGroupDom);
         for (let action of activeGroup.actions.values()) {
             if (!action.supportActions) continue;
@@ -1158,10 +1194,13 @@ class DrawManager {
     }
 
 }
-
+var dataJson;
+var drawManager;
+function startDevice() {
+    drawManager = new DrawManager(new Device(JSON.parse(dataJson)));
+    drawManager.draw();
+}
 
 //Начало работы программы---------------------------------------------------------------
-var dataJson =$("#data_in_json").get(0).dataset.device;
-var drawManager = new DrawManager(new Device(JSON.parse(dataJson)));
-drawManager.draw();
-//drawManager.start();
+dataJson =$(".data_in_json").get(0).dataset.device;
+startDevice();

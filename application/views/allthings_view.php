@@ -5,7 +5,7 @@
     <div class="container">
         <?php
         foreach ($data as $row){
-            echo "<a href='thing/index/$row[id]'><div class='item' data-id='$row[id]'>$row[thing_name]</div></a>";
+            echo "<a href='$row[id]'><div class='item' data-id='$row[id]'>$row[thing_name]</div></a>";
         }
         ?>
     </div>

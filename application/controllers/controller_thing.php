@@ -14,9 +14,19 @@ class Controller_thing extends Controller
         $this->model=new Model_thing();
     }
 
-    function action_index($param=null)
+    function index($param=null)
     {
         // TODO: Implement action_index() method.
+        $request_method=$_SERVER['REQUEST_METHOD'];
+        switch ($request_method){
+            case "GET":
+                $this->get($param);
+                break;
+            case "PUT":
+                $this->put($param);
+                break;
+        }
+        /*
         if ($param==="getdata"){
             $this->action_getdata();
             return;
@@ -33,11 +43,23 @@ class Controller_thing extends Controller
             $this->get_initial_line();
             return;
         }
-        if ($param!=null) {
-            $data=$this->model->get_data($param);
-            $this->view->generate("thing_view.php","template_thing_view.php",$data);
-        }
         else die("There is no param!");
+        */
+    }
+    function get($param){
+        $actions_json=isset($_GET['actions'])?$_GET['actions']:null;
+        if ($actions_json!=null){
+            $actions_value=$this->model->get_current_data($actions_json,$param);
+            $this->view->generate("actionsdata_view.php","empty_view.php",$actions_value);
+        }
+        else {
+            $data = $this->model->get($param);
+            $this->view->generate("thing_view.php", "template_thing_view.php", $data);
+        }
+    }
+    function put($thing_id){
+        $actions_value=$this->put($thing_id);
+        $this->view->generate("actionsdata_view.php","empty_view.php",$actions_value );
     }
     function action_getdata(){
         $data=$this->model->get_current_data();
