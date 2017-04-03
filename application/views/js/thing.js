@@ -259,7 +259,7 @@ class SupportAction extends Action {
                 $.ajax({
                     url: self.device.id,
                     type: 'PUT',
-                    success: self.device.insertValuesInActions(),
+                    success: (data)=>{},
                     data: {'newData': JSON.stringify(actions)},
                     contentType: 'json'
                 });
@@ -346,11 +346,10 @@ class MainAction extends Action {
                 $.ajax({
                     url: self.device.id,
                     type: 'PUT',
-                    success: (data)=>{console.log(data)},
+                    success: (data)=>{},
                     data: {'newData': JSON.stringify(actions)},
                     contentType: 'json'
                 });
-                //$.post("setaction", {'newData': JSON.stringify(device)}, self.device.insertValuesInActions(), 'json');
             });
             mainActionDom.append(submit);
 
@@ -416,10 +415,9 @@ class ActionGroup {
             }
         }
         this.jsonForUpdateActions=null;
-        this.timerId;
+        this.timerId=null;
         this.wasGroupSortable=false;
         this.domElement = null;
-        this.isStarted=false;
 
     }
     draw() {
@@ -475,8 +473,17 @@ class ActionGroup {
            let dialogManager=self.device.getDialogManager();
             dialogManager.setHeader("Выберите куда хотите вставить группу");
             dialogManager.fillContent((content)=>{
+                let childNodes={};
+                if (self.actionGroups.size>0) findChildNodes(self.actionGroups.values());
+                function findChildNodes(actionGroups) {
+                    for (let actionGroup of actionGroups){
+                        childNodes[actionGroup.id]=true;
+                        if (actionGroup.actionGroups.size>0) findChildNodes(actionGroup.actionGroups.values());
+                    }
+                }
                 for (let actionGroup of self.device.actionGroups.values()){
                     if (actionGroup.id==self.id) continue;
+                    if (actionGroup.id in childNodes) continue;
                     content.append($("<div class='groupForInsert block' id='groupForInsert_"+actionGroup.id+"'>"+actionGroup.name+"</div>").on("click",function (e) {
                         let groupForInsert=self.device.actionGroups.get(actionGroup.id);
                         self.owner.actionGroups.delete(self.id);
@@ -614,8 +621,7 @@ class ActionGroup {
             let json_dev=JSON.stringify(device);
             dataJson='{"devices":'+JSON.stringify(self.device.devices)+',';
             dataJson+='"creation_line":'+json_dev+'}';
-            let dev={"id":self.device.id,'line': json_dev};
-            $.post("upgradeline", {"newLine":JSON.stringify(dev)}, function (res) {
+            $.post(self.device.id, {"newLine":json_dev}, function (res) {
             });
             /*
             check(JSON.parse($("#data_in_json").get(0).dataset.device),device,"root");
@@ -712,11 +718,11 @@ class ActionGroup {
             drawManager.bodyDom.empty();
             startDevice();
             let activeGroup=drawManager.device.actionGroups.get(self.id)?drawManager.device.actionGroups.get(self.id):drawManager.device.actionGroups.get(0);
-            this.device.showNewGroup(activeGroup.id);
+            drawManager.device.showNewGroup(activeGroup.id);
 
         }));
         editContainerDom.append($("<div class='edit active reset' id='reset_"+this.id+"'>Заводские настройки</div>").on("click",function (e) {
-            $.post("getinitialline",{"id":self.device.id},function (res) {
+            $.post(self.device.id,{"newLine":"reset"},function (res) {
                 dataJson=res;
                 drawManager.bodyDom.empty();
                 startDevice();
@@ -912,19 +918,18 @@ class ActionGroup {
         }
     }
     startUpdate(){
-        if (this.isStarted) return;
+        if (this.timerId) return;
         let self = this;
-        this.isStarted=true;
-        $.get(this.device.id, {actions:this.jsonForUpdateActions}, this.insertValuesInActions(),'json');
+        $.get(this.device.id+"-value", {actions:this.jsonForUpdateActions}, this.insertValuesInActions(),'json');
         this.timerId = setTimeout(function update() {
-            $.get(self.device.id, {actions:self.jsonForUpdateActions}, self.insertValuesInActions(),'json');
-            this.timerId = setTimeout(update, self.device.updateTime);
+            $.get(self.device.id+"-value", {actions:self.jsonForUpdateActions}, self.insertValuesInActions(),'json');
+            self.timerId = setTimeout(update, self.device.updateTime);
         }, self.device.updateTime);
     }
     stopUpdate(){
-        if (!this.isStarted) return;
-        this.isStarted=false;
+        if (!this.timerId) return;
         clearTimeout(this.timerId);
+        this.timerId=null;
     }
     insertValuesInActions() {
         let self = this;

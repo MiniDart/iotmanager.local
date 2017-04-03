@@ -25,56 +25,25 @@ class Controller_thing extends Controller
             case "PUT":
                 $this->put($param);
                 break;
+            case "POST":
+                $this->post($param);
         }
-        /*
-        if ($param==="getdata"){
-            $this->action_getdata();
-            return;
-        }
-        if ($param==="setaction"){
-            $this->action_setaction();
-            return;
-        }
-        if ($param==="upgradeline"){
-            $this->upgrade_line();
-            return;
-        }
-        if ($param==="getinitialline"){
-            $this->get_initial_line();
-            return;
-        }
-        else die("There is no param!");
-        */
     }
     function get($param){
-        $actions_json=isset($_GET['actions'])?$_GET['actions']:null;
-        if ($actions_json!=null){
-            $actions_value=$this->model->get_current_data($actions_json,$param);
-            $this->view->generate("actionsdata_view.php","empty_view.php",$actions_value);
+        $data=$this->model->get($param);
+        if (stripos($param, "-value")){
+            $this->view->generate("actionsdata_view.php","empty_view.php",$data);
         }
         else {
-            $data = $this->model->get($param);
             $this->view->generate("thing_view.php", "template_thing_view.php", $data);
         }
     }
     function put($thing_id){
-        $actions_value=$this->put($thing_id);
-        $this->view->generate("actionsdata_view.php","empty_view.php",$actions_value );
+        $resp=$this->model->put($thing_id);
+        $this->view->generate("actionsdata_view.php","empty_view.php",$resp );
     }
-    function action_getdata(){
-        $data=$this->model->get_current_data();
-        $this->view->generate("actionsdata_view.php","empty_view.php",$data );
-    }
-    function action_setaction(){
-        $server_output=$this->model->set_action_data();
-        $this->view->generate("actionsdata_view.php","empty_view.php",$server_output );
-    }
-    function upgrade_line(){
-        $data=$this->model->upgrade_line();
-        $this->view->generate("actionsdata_view.php","empty_view.php",$data);
-    }
-    function get_initial_line(){
-        $data=$this->model->get_initial_line();
-        $this->view->generate("actionsdata_view.php","empty_view.php",$data);
+    function post($thing_id){
+        $status=$this->model->post($thing_id);
+        $this->view->generate("actionsdata_view.php","empty_view.php",$status);
     }
 }
