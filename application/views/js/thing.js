@@ -451,7 +451,6 @@ class ActionGroup {
             deviceShortcutContainerDom.append($("<a class='createDevice deviceShortcut' href='#'>+</a>").on("click",(e)=>{
                 $("body").empty();
             }));
-            drawManager.deviceDomWidth=
             self.device.showNewGroup(self.id);
         }));
         editContainerDom.append($("<div class='edit cut active' id='cut" + this.id + "'>Вырезать</div>").on("click", function (e) {
@@ -990,9 +989,14 @@ class Device {
         };
         this.dialogManager=null;
         this.domElement = null;
+        this.isVirtual=data.isVirtual=="true";
+        this.isSecond=false;
     }
 getGroupId(){
-    return ++this.groupId;
+    if (this.isSecond){
+        return drawManager.device.getGroupId();
+    }
+    else return ++this.groupId;
 }
     draw() {
         let deviceDom = $("<div class='device' id='device_" + this.id + "'><div class='groupContainer'></div></div>");
@@ -1083,14 +1087,14 @@ class Theme {
 
 class DrawManager {
     constructor(device) {
-        this.device = new Map();
-        this.device.set(device.id,device);
+        this.device = device;
+        this.secondDevice=null;
         this.themes = [];
         this.themes.push(new Theme());
         this.activeTheme = this.themes[0];
-        this.deviceDomWidth = new Map();
+        this.deviceDomWidth = null;
         this.dialogManager=null;
-        this.bodyDom=new Map();
+        this.bodyDom=null;
     }
 
     draw() {
@@ -1110,14 +1114,26 @@ class DrawManager {
 
     simpleAlgorithm() {
         let deviceDom = this.device.draw();
+        this.deviceDomWidth = this.secondDevice?Math.floor(document.documentElement.clientWidth/2):document.documentElement.clientWidth;
         let section = $("section.container");
-        this.deviceDomWidth = document.documentElement.clientWidth;
         deviceDom.css({
             "min-height": section.height() + "px"
         });
         section.append(deviceDom);
         deviceDom.find(".dialogContainer").hide();
         this.device.showNewGroup(null);
+        if (this.secondDevice){
+            deviceDom.css({
+                "display":"inline-block"
+            });
+            let secondDeviceDom=this.secondDevice.draw();
+            secondDeviceDom.css({
+                "min-height": section.height() + "px",
+                "display":"inline-block"
+            });
+            secondDeviceDom.find(".dialogContainer").hide();
+            section.append(secondDeviceDom);
+        }
     }
 
     simpleGroupAlgorithm() {
