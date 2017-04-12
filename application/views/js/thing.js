@@ -447,6 +447,11 @@ class ActionGroup {
         editContainerDom.append($("<div class='edit change' id='change_"+this.id+"'>Изменить</div>").on("click",function (e) {
             self.device.isChangingNow=true;
             self.device.changeManager.typeOfChanging="inProcess";
+            let deviceShortcutContainerDom=$(".deviceShortcutContainer");
+            deviceShortcutContainerDom.append($("<a class='createDevice deviceShortcut' href='#'>+</a>").on("click",(e)=>{
+                $("body").empty();
+            }));
+            drawManager.deviceDomWidth=
             self.device.showNewGroup(self.id);
         }));
         editContainerDom.append($("<div class='edit cut active' id='cut" + this.id + "'>Вырезать</div>").on("click", function (e) {
@@ -1078,13 +1083,14 @@ class Theme {
 
 class DrawManager {
     constructor(device) {
-        this.device = device;
+        this.device = new Map();
+        this.device.set(device.id,device);
         this.themes = [];
         this.themes.push(new Theme());
         this.activeTheme = this.themes[0];
-        this.deviceDomWidth = null;
+        this.deviceDomWidth = new Map();
         this.dialogManager=null;
-        this.bodyDom=null;
+        this.bodyDom=new Map();
     }
 
     draw() {
@@ -1095,6 +1101,7 @@ class DrawManager {
         this.bodyDom.append($("<footer></footer>"));
         let deviceShortcutContainerDom=$("<div class='deviceShortcutContainer'></div>");
         for (let device of this.device.devices){
+            if (device.id==this.device.id) continue;
             deviceShortcutContainerDom.append($("<a class='deviceShortcut' id='deviceShortcut_"+device.id+"' href='http://iotmanager.local/"+device.id+"'>"+makeBigFirstLetter(device.thing_name)+"</a>"));
         }
         $("header").append("<h1>"+this.device.name+"</h1>").append(deviceShortcutContainerDom);
