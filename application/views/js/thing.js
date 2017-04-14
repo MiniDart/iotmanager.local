@@ -45,9 +45,9 @@
  })
  });
  */
-
 //Описание сущностей----------------------------------------------------------------------------------
 function makeBigFirstLetter(word) {
+    if (!word) return null;
     let l = word[0].toUpperCase();
     return l + word.substring(1);
 }
@@ -391,9 +391,9 @@ class ActionGroup {
     constructor(data, owner, device) {
         this.device = device;
         this.owner = owner;
-        this.name = null;
-        if ("name" in data) this.name = makeBigFirstLetter(data.name);
         this.id = this.device.getGroupId();
+        this.name = "Группа "+this.id;
+        if ("name" in data) this.name = makeBigFirstLetter(data.name);
         this.device.actionGroups.set(this.id, this);
         this.actions = new Map();
         this.actionGroups = new Map();
@@ -416,26 +416,43 @@ class ActionGroup {
         }
         this.jsonForUpdateActions=null;
         this.timerId=null;
-        this.wasGroupSortable=false;
         this.domElement = null;
 
     }
     draw() {
         let self = this;
         let actionGroupDom = $("<div class='actionGroup' id='actionGroup_" + this.id + "'></div>");
-        if (this.owner.actionGroups.size>1) {
+        if (!this.device.isChangingNow&&this.owner.actionGroups.size>1) {
             let currentLevelGroupDom = $("<div class='currentLevelGroup'></div>");
             for (let actionGroup of this.owner.actionGroups.values()) {
                 currentLevelGroupDom.append("<div class='groupOnTheLevel shortcutGroup' id='groupOnTheLevel_"+actionGroup.id+ "' data-id='" + actionGroup.id + "'>" + actionGroup.name + "</div>");
             }
             actionGroupDom.append(currentLevelGroupDom);
         }
+        if (this.device.isChangingNow){
+            let sortableElem=$("<div class='currentLevelGroup'></div>");
+            for (let actionGroup of this.owner.actionGroups.values()) {
+                sortableElem.append("<div class='groupOnTheLevel shortcutGroup' id='groupOnTheLevel_"+actionGroup.id+ "' data-id='" + actionGroup.id + "'>" + actionGroup.name + "</div>");
+            }
+            sortableElem.sortable({tolerance:"pointer",distance:15,update:(e,ui)=>{
+                this.owner.actionGroups=new Map();
+                for (let strId of sortableElem.sortable("toArray")){
+                    let id=+strId.substring(16);
+                    this.owner.actionGroups.set(id,this.device.actionGroups.get(id));
+                    if (id==this.id) continue;
+                    if (this.owner.actionGroups.get(id).domElement) this.owner.actionGroups.get(id).domElement.remove();
+                    this.owner.actionGroups.get(id).domElement=null;
+                }
+                this.device.showNewGroup(this.id);
+            }});
+            actionGroupDom.append(sortableElem);
+        }
         let mainContentDom=$("<div class='mainContent'></div>");
         let pathContainerDom = $("<div class='pathContainer'></div>");
         let path = [];
         path.push($("<a href='#' class='path shortcutGroup' id='path_" + this.id + "' data-id='" + this.id + "'>" + this.name + "</a>"));
         let owner = this.owner;
-        while (owner.id != -1) {
+        while (owner.id >=0) {
             path.unshift($("<a href='#' class='path shortcutGroup' id='path_" + owner.id + "' data-id='" + owner.id + "'>" + owner.name + "-> </a>"));
             owner = owner.owner;
         }
@@ -447,10 +464,41 @@ class ActionGroup {
         editContainerDom.append($("<div class='edit change' id='change_"+this.id+"'>Изменить</div>").on("click",function (e) {
             self.device.isChangingNow=true;
             self.device.changeManager.typeOfChanging="inProcess";
-            let deviceShortcutContainerDom=$(".deviceShortcutContainer");
-            deviceShortcutContainerDom.append($("<a class='createDevice deviceShortcut' href='#'>+</a>").on("click",(e)=>{
-                $("body").empty();
-            }));
+            if (!self.device.isSecond) {
+                let deviceShortcutContainerDom = $(".deviceShortcutContainer");
+                deviceShortcutContainerDom.append($("<a class='createDevice deviceShortcut' href='#'>+</a>").on("click", function (e) {
+                    let dialogManager = drawManager.getDialogManager();
+                    dialogManager.setHeader("Введите название устройства");
+                    dialogManager.fillContent((content)=> {
+                        content.append($("<p><input type='text' class='newDeviceName'></p>"));
+                        content.append($("<input type='button' value='Создать устройство'>").on("click", (e)=> {
+                            let name = content.find(".newDeviceName").val();
+                            if (name.length == 0) {
+                                alert("Введите имя!");
+                                return;
+                            }
+                            let deviceDescription = {
+                                id: -1,
+                                name: name,
+                                thingGroup: "virtual"
+
+                            };
+                            let data = {creation_line: deviceDescription};
+                            let device = new Device(data);
+                            device.isSecond = true;
+                            device.isChangingNow = true;
+                            device.changeManager.typeOfChanging = "inProcess";
+                            drawManager.secondDevice = device;
+                            $(this).remove();
+                            dialogManager.hideDialog();
+                            self.device.domElement.remove();
+                            drawManager[drawManager.activeTheme.algorithm + "Algorithm"]();
+                        }));
+                    });
+                    dialogManager.showDialog("form");
+
+                }));
+            }
             self.device.showNewGroup(self.id);
         }));
         editContainerDom.append($("<div class='edit cut active' id='cut" + this.id + "'>Вырезать</div>").on("click", function (e) {
@@ -474,7 +522,7 @@ class ActionGroup {
             self.owner=null;
         }));
         editContainerDom.append($("<div class='edit active insertInto' id='groupInsertInto_"+this.id+"'>Переместить в</div>").on("click",function (e) {
-           let dialogManager=self.device.getDialogManager();
+           let dialogManager=drawManager.getDialogManager();
             dialogManager.setHeader("Выберите куда хотите вставить группу");
             dialogManager.fillContent((content)=>{
                 let childNodes={};
@@ -515,7 +563,7 @@ class ActionGroup {
 
         }));
         editContainerDom.append($("<div class='edit active createGroup' id='createGroup_"+this.id+"'>Создать группу</div>").on("click",(e)=>{
-            let dialogManager=self.device.getDialogManager();
+            let dialogManager=drawManager.getDialogManager();
             dialogManager.setHeader("Задайте имя и расположение группы");
             dialogManager.fillContent((content)=>{
                 content.append($("<p>Введите имя группы:</p><form name='main'>" +
@@ -560,7 +608,7 @@ class ActionGroup {
             dialogManager.showDialog("form");
         }));
         editContainerDom.append($("<div class='edit active delete' id='delete_"+this.id+"'>Удалить</div>").on("click",(e)=>{
-            let dialogManager=this.device.getDialogManager();
+            let dialogManager=drawManager.getDialogManager();
             if (this.actionGroups.size>0){
                 dialogManager.setHeader("Ошибка!");
                 dialogManager.fillContent("Сначала Вам необходимо удалить или переместить все вложенные группы!");
@@ -777,32 +825,22 @@ class ActionGroup {
         if (this.actionGroups.size > 0) {
             let actionGroupContainer = $("<div class='actionGroupContainer'></div>");
             for (let actionGroup of this.actionGroups.values()) {
-                actionGroupContainer.append("<div id='groupInGroup_" + actionGroup.id + "' class='groupInGroup shortcutGroup' data-id='" + actionGroup.id + "'>" + actionGroup.name + "</div>");
+                let groupInGroup=$("<div id='groupInGroup_" + actionGroup.id + "' class='groupInGroup shortcutGroup' data-id='" + actionGroup.id + "'>" + actionGroup.name + "</div>");
+                actionGroupContainer.append(groupInGroup);
+                if (this.device.isChangingNow&&drawManager.secondDevice){
+                    groupInGroup.draggable({ revert:true });
+                }
             }
             mainContentDom.append(actionGroupContainer);
         }
         if (this.actions.size > 0) {
             let actionContainer = $("<div class='actionContainer'></div>");
-            for (let action of this.actions.values()) {
-                actionContainer.append(action.draw(this.id));
-            }
-            mainContentDom.append(actionContainer);
-        }
-        actionGroupDom.append(mainContentDom);
-        this.domElement = actionGroupDom;
-        return actionGroupDom;
-
-    }
-    showEditButtons(){
-        if (this.device.isChangingNow) {
-            if (this.actions.size>0){
-                let actionContainer = this.domElement.find(".actionContainer");
-                actionContainer.empty();
+            if (this.device.isChangingNow){
                 actionContainer.addClass("sortAction");
                 let actionAvatarContainerDom=$("<div class='actionAvatarContainer'></div>");
                 for (let action of this.actions.values()) {
-                    action.domElement.get(this.id).hide();
-                    let actionAvatarDom = $("<div class='actionAvatar' id='aV_" + action.id + "'><p>" + action.name + "</p></div>");
+                    let idString=this.device.isSecond?"aS_":"aV_";
+                    let actionAvatarDom = $("<div class='actionAvatar' id='"+idString + action.id + "'><p>" + action.name + "</p></div>");
                     let editActionContainerDom = $("<div class='editContainerAction'></div>");
                     if (action.owners.size>1) editActionContainerDom.append($("<div class='editAction deleteAction' id='deleteAction_"+action.id+"'>Удалить</div>").on("click",(e)=>{
                         if (!confirm("Вы действительно хотите удалить группу?")) return;
@@ -812,16 +850,16 @@ class ActionGroup {
                             action.domElement.get(this.id).remove();
                             action.domElement.delete(this.id);
                         }
-                        this.domElement.find("#aV_"+action.id).remove();
+                        this.domElement.find("#"+idString+action.id).remove();
                     }));
                     editActionContainerDom.append($("<div class='editAction copyAction' id='copyAction_" + action.id + "'>Копировать</div>").on("click", (e)=> {
-                        let dialogManager = this.device.getDialogManager();
+                        let dialogManager = drawManager.getDialogManager();
                         dialogManager.setHeader("Выберите группу для копирования:");
                         dialogManager.fillContent((content)=> {
                             for (let group of this.device.actionGroups.values()) {
                                 if (action.owners.has(group.id) || group.id === -1) continue;
                                 content.append($("<div class='groupForInsert block' id='groupForInsert_" + group.id + "'>" + group.name + "</div>").on("click", (e)=> {
-                                    this.device.getDialogManager().hideDialog();
+                                    drawManager.getDialogManager().hideDialog();
                                     action.owners.set(group.id, group);
                                     group.actions.set(action.id, action);
                                     if (group.domElement) group.domElement.remove();
@@ -834,17 +872,17 @@ class ActionGroup {
                         dialogManager.showDialog("block");
                     }));
                     editActionContainerDom.append($("<div class='editAction insertIntoAction' id='insertInto_" + action.id + "'>Переместить в</div>").on("click", (e)=> {
-                        let dialogManager = this.device.getDialogManager();
+                        let dialogManager = drawManager.getDialogManager();
                         dialogManager.setHeader("Выберите группу для перемещения:");
                         dialogManager.fillContent((content)=> {
                             for (let group of this.device.actionGroups.values()) {
                                 if (action.owners.has(group.id) || group.id === -1) continue;
                                 content.append($("<div class='groupForInsert block' id='groupForInsert_" + group.id + "'>" + group.name + "</div>").on("click", (e)=> {
-                                    this.device.getDialogManager().hideDialog();
+                                    drawManager.getDialogManager().hideDialog();
                                     let aG = this.device.activeGroup;
                                     action.domElement.get(aG.id).remove();
                                     action.domElement.delete(aG.id);
-                                    this.domElement.find("#aV_"+action.id).remove();
+                                    this.domElement.find("#"+idString+action.id).remove();
                                     aG.actions.delete(action.id);
                                     action.owners.delete(aG.id);
                                     action.owners.set(group.id, group);
@@ -865,7 +903,7 @@ class ActionGroup {
                             action.domElement.delete(aG.id);
                         }
                         aG.actions.delete(action.id);
-                        this.domElement.find("#aV_"+action.id).remove();
+                        this.domElement.find("#"+idString+action.id).remove();
                         this.device.changeManager.actionToInsert = action;
                         this.device.changeManager.typeOfChanging = "insertAction";
                         aG.showEditButtons();
@@ -875,7 +913,7 @@ class ActionGroup {
                     actionAvatarContainerDom.append(actionAvatarDom);
                 }
                 actionContainer.append(actionAvatarContainerDom);
-                let sortableElem=this.domElement.find(".actionAvatarContainer");
+                let sortableElem=actionAvatarContainerDom;
                 sortableElem.sortable({ tolerance:"pointer",distance:15,update:(e,ui)=>{
                     this.actions=new Map();
                     for (let stringId of sortableElem.sortable("toArray")){
@@ -884,21 +922,20 @@ class ActionGroup {
                     }
                 }});
             }
-            if (this.owner.actionGroups.size>0&&!this.wasGroupSortable){
-                this.wasGroupSortable=true;
-                let sortableElem=this.domElement.find(".currentLevelGroup");
-                sortableElem.sortable({tolerance:"pointer",distance:15,update:(e,ui)=>{
-                    this.owner.actionGroups=new Map();
-                    for (let strId of sortableElem.sortable("toArray")){
-                        let id=+strId.substring(16);
-                        this.owner.actionGroups.set(id,this.device.actionGroups.get(id));
-                        if (id==this.id) continue;
-                        if (this.owner.actionGroups.get(id).domElement) this.owner.actionGroups.get(id).domElement.remove();
-                        this.owner.actionGroups.get(id).domElement=null;
-                    }
-                    this.device.showNewGroup(this.id);
-                }});
+            else {
+                for (let action of this.actions.values()) {
+                    actionContainer.append(action.draw(this.id));
+                }
             }
+            mainContentDom.append(actionContainer);
+        }
+        actionGroupDom.append(mainContentDom);
+        this.domElement = actionGroupDom;
+        return actionGroupDom;
+
+    }
+    showEditButtons(){
+        if (this.device.isChangingNow) {
             this.domElement.find(".editContainer .edit").hide();
             this.domElement.find(".editContainerAction").hide();
             switch (this.device.changeManager.typeOfChanging){
@@ -959,17 +996,17 @@ class ActionGroup {
 }
 class Device {
     constructor(data_json) {
-        this.devices=data_json.devices;
+        this.devices=data_json.devices?data_json.devices:null;
         let data=data_json.creation_line;
         this.id = +data.id;
         this.groupId=-2;
         this.name = makeBigFirstLetter(data.name);
         this.thingGroup = data.thingGroup;
-        this.updateTime = +data.updateTime * 1000;
+        this.updateTime = (data.updateTime?+data.updateTime:3) * 1000;
         this.actions = new Map();
         this.actionGroups = new Map();
         new ActionGroup({"name":"Корневая группа","actionGroups": data.actionGroups}, null, this);
-        this.activeGroup=this.actionGroups.get(0);
+        this.activeGroup=this.actionGroups.get(0)?this.actionGroups.get(0):null;
         for (let group of this.actionGroups.values()){//находим copy-null-actions и присваиваем оригинал, а также формируем json-строку для получения текущего состояния action-ов
             for (let entry of group.actions){
                 if (!entry[1]){
@@ -987,10 +1024,9 @@ class Device {
             this.actionToInsert=null;
         }
         };
-        this.dialogManager=null;
         this.domElement = null;
-        this.isVirtual=data.isVirtual=="true";
         this.isSecond=false;
+        this.isVirtual=this.thingGroup=="virtual";
     }
 getGroupId(){
     if (this.isSecond){
@@ -1000,18 +1036,14 @@ getGroupId(){
 }
     draw() {
         let deviceDom = $("<div class='device' id='device_" + this.id + "'><div class='groupContainer'></div></div>");
-        let dialogContainerDom=$("<div class='dialogContainer'><div class='dialog'><h1></h1><div class='content'></div></div></div>");
-        let closeDom=$("<div class='close'>X</div>");
-        closeDom.on("click",(e)=>{
-            this.dialogManager.hideDialog();
-        });
-        dialogContainerDom.find(".dialog").append(closeDom);
-        deviceDom.append(dialogContainerDom);
+        if (this.isSecond) deviceDom.prepend("<h2 class='secondDeviceName'>"+this.name+"</h2>");
         let self = this;
         deviceDom.on("click", ".shortcutGroup", function (e) {
-            let shortcutGroup = $(this);
+            let shortcutGroupDom = $(this);
             e.preventDefault();
-            self.showNewGroup(+shortcutGroup.attr("data-id"));
+            let groupId=+shortcutGroupDom.attr("data-id");
+            if (!self.actionGroups.has(groupId)) return;
+            self.showNewGroup(groupId);
         });
         this.domElement = deviceDom;
         return deviceDom;
@@ -1020,57 +1052,25 @@ getGroupId(){
     
 
     showNewGroup(id) {
+        if (this.isSecond){
+            this.activeGroup = this.actionGroups.get(+id);
+            drawManager.device.showNewGroup(null);
+            return;
+        }
+        if (this.isChangingNow) {
+            if (this.activeGroup.domElement) this.activeGroup.domElement.remove();
+            if (drawManager.secondDevice&&drawManager.secondDevice.activeGroup&&drawManager.secondDevice.activeGroup.domElement) drawManager.secondDevice.activeGroup.domElement.remove();
+        }
         if (id!=null) {
-            if (this.activeGroup.domElement) this.activeGroup.domElement.detach();
-            if (this.activeGroup) this.activeGroup.stopUpdate();
+            if (this.activeGroup) {
+                this.activeGroup.stopUpdate();
+                if (this.activeGroup.domElement) this.activeGroup.domElement.detach();
+            }
             this.activeGroup = this.actionGroups.get(+id);
         }
         let algorithm = drawManager.activeTheme.algorithm;
         drawManager[algorithm + "GroupAlgorithm"]();
         if (!this.isChangingNow) this.activeGroup.startUpdate();
-    }
-
-    getDialogManager(){
-        if (this.dialogManager!=null) return this.dialogManager;
-        let self=this;
-        if (self.domElement==null){
-            alert("Error!");
-            return;
-        }
-        return this.dialogManager={
-            dialog:self.domElement.find(".dialogContainer .dialog"),
-            dialogContainer:self.domElement.find(".dialogContainer"),
-            setHeader:function (text="") {
-                this.dialog.find("h1").text(text);
-            },
-            fillContent:function (content) {
-                let contentDom=this.dialog.find(".content");
-                if (typeof content=="object"){
-                    for (let item of content){
-                        contentDom.append(item);
-                    }
-                }
-                else if (typeof content=="function"){
-                    content(contentDom);
-                }
-                else contentDom.text(content);
-            },
-            showDialog:function (type) {
-                drawManager[drawManager.activeTheme.algorithm+"ShowDialog"](type);
-            },
-            hideDialog:function () {
-                this.setHeader();
-                this.dialog.removeAttr("class");
-                this.dialog.addClass("dialog");
-                this.dialogContainer.removeAttr("class");
-                this.dialogContainer.addClass("dialogContainer");
-                let content=this.dialog.find(".content");
-                content.removeAttr("class");
-                content.addClass("content");
-                content.empty();
-                self.domElement.find(".dialogContainer").hide();
-            }
-        };
     }
 
 }
@@ -1093,12 +1093,20 @@ class DrawManager {
         this.themes.push(new Theme());
         this.activeTheme = this.themes[0];
         this.deviceDomWidth = null;
-        this.dialogManager=null;
         this.bodyDom=null;
+        this.dialogManager=null;
     }
 
     draw() {
         this.bodyDom=$("body");
+        let dialogContainerDom=$("<div class='dialogContainer'><div class='dialog'><h1></h1><div class='content'></div></div></div>");
+        let closeDom=$("<div class='close'>X</div>");
+        closeDom.on("click",(e)=>{
+            this.dialogManager.hideDialog();
+        });
+        dialogContainerDom.find(".dialog").append(closeDom);
+        dialogContainerDom.hide();
+        this.bodyDom.append(dialogContainerDom);
         this.bodyDom.addClass(drawManager.activeTheme.name+"-theme");
         this.bodyDom.append($("<header></header>"));
         this.bodyDom.append($("<section class='container'></section>"));
@@ -1113,78 +1121,136 @@ class DrawManager {
     }
 
     simpleAlgorithm() {
+        let self=this;
         let deviceDom = this.device.draw();
-        this.deviceDomWidth = this.secondDevice?Math.floor(document.documentElement.clientWidth/2):document.documentElement.clientWidth;
+        this.deviceDomWidth = this.secondDevice?Math.floor(document.documentElement.clientWidth/2)-4:document.documentElement.clientWidth;
         let section = $("section.container");
+        let minHeight=section.height();
         deviceDom.css({
-            "min-height": section.height() + "px"
+            "min-height": minHeight + "px"
         });
         section.append(deviceDom);
-        deviceDom.find(".dialogContainer").hide();
-        this.device.showNewGroup(null);
         if (this.secondDevice){
-            deviceDom.css({
-                "display":"inline-block"
-            });
+            section.css({
+                "display":"flex"
+                });
             let secondDeviceDom=this.secondDevice.draw();
-            secondDeviceDom.css({
-                "min-height": section.height() + "px",
-                "display":"inline-block"
+            if (this.device.isVirtual) deviceDom.droppable({
+                drop:dropHandle(self.device,self.secondDevice)
             });
-            secondDeviceDom.find(".dialogContainer").hide();
+            if (this.secondDevice.isVirtual) secondDeviceDom.droppable({
+                drop:dropHandle(self.secondDevice,self.device)
+            });
+            secondDeviceDom.css({
+                "min-height": minHeight + "px",
+            });
             section.append(secondDeviceDom);
+        }
+        this.device.showNewGroup(null);
+        function dropHandle(deviceTo, deviceFrom) {
+            return function (e,ui) {
+                let idString=ui.draggable.attr("id");
+                if (idString.indexOf("aV_")==0||idString.indexOf("aS_")==0){
+                    let id=+idString.substr(3);
+                    if (deviceTo.actionGroups.size==1){
+                        deviceTo.domElement.find("p.temp").remove();
+                        let newGroup=new ActionGroup({},deviceTo.actionGroups.get(-1),deviceTo);
+                        deviceTo.actionGroups.get(-1).actionGroups.set(newGroup.id,newGroup);
+                        deviceTo.activeGroup=newGroup;
+                    }
+                    let group=deviceTo.activeGroup;
+                    group.actions.set(id,deviceFrom.actions.get(id));
+                }
+                self.device.showNewGroup(null);
+            }
         }
     }
 
     simpleGroupAlgorithm() {
-        if (this.device.activeGroup.domElement) {
-            this.device.activeGroup.showEditButtons();
-            this.device.domElement.find(".groupContainer").append(this.device.activeGroup.domElement);
-            return;
-        }
-        let activeGroup = this.device.activeGroup;
-        activeGroup.isChanging=false;
-        let actionGroupDom = activeGroup.draw();
-        actionGroupDom.addClass("clearFix");
-        let containerWidth =this.deviceDomWidth;
-        actionGroupDom.css({
-            "width":containerWidth+"px"
-        });
-        let currentLevelGroupDom=actionGroupDom.find(".currentLevelGroup");
-        if (currentLevelGroupDom.length>0){
-            containerWidth-=202;
-        }
-        let mainContentDom=actionGroupDom.find(".mainContent");
-        mainContentDom.css({
-            "width": containerWidth + "px",
-            "min-height": $("section.container").height() + "px"
-        });
-        if (activeGroup.actions.size > 0) {
-            let actionWidth = Math.floor(containerWidth / this.activeTheme.allLines) - this.activeTheme.allLines * 12;
-            for (let action of activeGroup.actions.values()){
-                action.domElement.get(activeGroup.id).css({
-                    "flex-basis":actionWidth+"px"
-                })
+        let self=this;
+        let containerWidth = self.deviceDomWidth;
+        if (this.device.isChangingNow) {
+            this.device.domElement.find(".groupContainer").append(show(this.device.activeGroup));
+            if (this.secondDevice&&this.secondDevice.activeGroup) this.secondDevice.domElement.find(".groupContainer").append(show(this.secondDevice.activeGroup));
+            else if (this.secondDevice&&this.secondDevice.domElement.find("div.temp").length==0) {
+                this.secondDevice.domElement.find(".groupContainer").append($("<p class='temp'>Перемемтите сюда группу или действие</p>").css({
+                    "width": containerWidth + "px",
+                    "text-align":"center"
+                }));
             }
-            let supportActionDom = mainContentDom.find(".supportAction");
-            supportActionDom.hide();
         }
-        actionGroupDom.find("#groupOnTheLevel_"+activeGroup.id).css({
-            "background": "black"
-        });
-        activeGroup.wasShownAvatars=false;
-        activeGroup.wasGroupSortable=false;
-        activeGroup.showEditButtons();
-        activeGroup.saveActionsInJson();
-        this.device.domElement.find(".groupContainer").append(actionGroupDom);
-        for (let action of activeGroup.actions.values()) {
-            if (!action.supportActions) continue;
-            let activeSupportActions = [];
-            for (let supportAction of action.supportActions.values()) {
-                if (supportAction.active == null) activeSupportActions.push(supportAction);
+        else {
+            let activeGroup=this.device.activeGroup;
+            if (activeGroup.domElement) {
+                activeGroup.showEditButtons();
+                this.device.domElement.find(".groupContainer").append(activeGroup.domElement);
             }
-            this[this.activeTheme.algorithm + "SupportAlgorithm"](activeSupportActions, action.domElement.get(activeGroup.id).width());
+            else {
+                let actionGroupDom = activeGroup.draw();
+                actionGroupDom.addClass("clearFix");
+                actionGroupDom.css({
+                    "width": containerWidth + "px"
+                });
+                let currentLevelGroupDom = actionGroupDom.find(".currentLevelGroup");
+                if (currentLevelGroupDom.length > 0) {
+                    containerWidth -= 202;
+                }
+                let mainContentDom = actionGroupDom.find(".mainContent");
+                mainContentDom.css({
+                    "width": containerWidth + "px",
+                    "min-height": $("section.container").height() + "px"
+                });
+                if (activeGroup.actions.size > 0) {
+                    let actionWidth = Math.floor(containerWidth / self.activeTheme.allLines) - self.activeTheme.allLines * 12;
+                    for (let action of activeGroup.actions.values()) {
+                        action.domElement.get(activeGroup.id).css({
+                            "flex-basis": actionWidth + "px"
+                        })
+                    }
+                    let supportActionDom = mainContentDom.find(".supportAction");
+                    supportActionDom.hide();
+                }
+                actionGroupDom.find("#groupOnTheLevel_" + activeGroup.id).css({
+                    "background": "black"
+                });
+                activeGroup.showEditButtons();
+                activeGroup.saveActionsInJson();
+                this.device.domElement.find(".groupContainer").append(activeGroup.domElement);
+            }
+            for (let action of this.device.activeGroup.actions.values()) {
+                if (!action.supportActions) continue;
+                let activeSupportActions = [];
+                for (let supportAction of action.supportActions.values()) {
+                    if (supportAction.active == null) activeSupportActions.push(supportAction);
+                }
+                self[self.activeTheme.algorithm + "SupportAlgorithm"](activeSupportActions, action.domElement.get(activeGroup.id).width());
+            }
         }
+        function show(activeGroup) {
+            let actionGroupDom = activeGroup.draw();
+            actionGroupDom.addClass("clearFix");
+            let containerWidth =self.deviceDomWidth;
+            actionGroupDom.css({
+                "width":containerWidth+"px"
+            });
+            let currentLevelGroupDom=actionGroupDom.find(".currentLevelGroup");
+            if (currentLevelGroupDom.length>0){
+                containerWidth-=202;
+            }
+            let mainContentDom=actionGroupDom.find(".mainContent");
+            let height=activeGroup.device.isSecond?$("section.container").height()-40:$("section.container").height();
+            mainContentDom.css({
+                "width": containerWidth + "px",
+                "min-height": height + "px"
+            });
+            actionGroupDom.find("#groupOnTheLevel_"+activeGroup.id).css({
+                "background": "black"
+            });
+            activeGroup.showEditButtons();
+            activeGroup.saveActionsInJson();
+            return actionGroupDom;
+        }
+
     }
 
     simpleSupportAlgorithm(supportActions, actionWidth) {
@@ -1203,7 +1269,7 @@ class DrawManager {
         }
     }
     simpleShowDialog(type){
-        let dialogContainerDom=this.device.domElement.find(".dialogContainer");
+        let dialogContainerDom=this.bodyDom.find(".dialogContainer");
         switch (type){
             case "block":
                 dialogContainerDom.find(".content").addClass("block-content");
@@ -1220,6 +1286,48 @@ class DrawManager {
         }
         dialogContainerDom.show();
     }
+    getDialogManager(){
+        if (this.dialogManager!=null) {
+            return this.dialogManager;
+        }
+        let self=this;
+        return this.dialogManager={
+            dialog:self.bodyDom.find(".dialogContainer .dialog"),
+            dialogContainer:self.bodyDom.find(".dialogContainer"),
+            setHeader:function (text="") {
+                this.dialog.find("h1").text(text);
+            },
+            fillContent:function (content) {
+                let contentDom=this.dialog.find(".content");
+                if (typeof content=="object"){
+                    for (let item of content){
+                        contentDom.append(item);
+                    }
+                }
+                else if (typeof content=="function"){
+                    content(contentDom);
+                }
+                else contentDom.text(content);
+            },
+            showDialog:function (type) {
+                console.log(this.dialog.find("h1").html());
+                drawManager[drawManager.activeTheme.algorithm+"ShowDialog"](type);
+            },
+            hideDialog:function () {
+                this.setHeader();
+                this.dialog.removeAttr("class");
+                this.dialog.addClass("dialog");
+                this.dialogContainer.removeAttr("class");
+                this.dialogContainer.addClass("dialogContainer");
+                let content=this.dialog.find(".content");
+                content.removeAttr("class");
+                content.addClass("content");
+                content.empty();
+                this.dialogContainer.hide();
+            }
+        };
+    }
+
 
 }
 var dataJson;

@@ -68,6 +68,8 @@ height:100vh;
 background:rgba(58, 58, 58, 0.46);
 top:0;
 left:0;
+    color: white;
+    font-size: 23px;
 }
 .normal-theme .dialog{
 position:relative;
@@ -239,4 +241,8 @@ cursor:pointer;
     background:red;
     border:1px solid white;
     cursor:pointer;
+}
+.normal-theme h2.secondDeviceName{
+    border-bottom:1px solid white;
+    height:40px;
 }
