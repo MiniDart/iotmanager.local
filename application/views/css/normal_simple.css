@@ -70,6 +70,7 @@ top:0;
 left:0;
     color: white;
     font-size: 23px;
+    z-index: 1000;
 }
 .normal-theme .dialog{
 position:relative;
@@ -79,6 +80,7 @@ min-height:40%;
 max-height:80%;
 margin: auto;
 padding:15px;
+    background:grey;
 }
 
 .normal-theme .dialog .close{
@@ -90,11 +92,12 @@ cursor:pointer;
 }
 
 .normal-theme .currentLevelGroup{
-float:left;
-width:200px
+    max-width: 200px;
+    min-width: 200px;
 }
 .normal-theme .mainContent{
-float:left;
+    flex-grow: 1;
+    min-width: 800px;
 border-left:1px solid white;
 box-sizing:border-box;
 }
@@ -157,6 +160,8 @@ padding: 5px;
 border: 1px solid grey;
 padding: 5px;
 box-sizing: border-box;
+    flex-grow: 1;
+    flex-basis: 250px;
 }
 .normal-theme .actionGroup .groupOnTheLevel{
 font-size: 30px;
@@ -164,10 +169,6 @@ cursor: pointer;
 text-align: center;
 border-bottom: 1px solid white;
 background: #850000;
-}
-.normal-theme .dialogContainer .dialog{
-background:grey;
-overflow:auto;
 }
 .normal-theme .dialogContainer .block-content{
 padding-top:20px;
@@ -245,4 +246,7 @@ cursor:pointer;
 .normal-theme h2.secondDeviceName{
     border-bottom:1px solid white;
     height:40px;
+}
+.normal-theme .actionGroup{
+    display: flex;
 }

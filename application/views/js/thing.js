@@ -54,6 +54,77 @@ function makeBigFirstLetter(word) {
 function rankSort(a, b) {
     return (a.rank - b.rank);
 }
+function fillActionGroups(actionGroupsIn,actionGroupsOut,deviceFrom) {
+    for (let actionGroupIn of actionGroupsIn){
+        let actionGroupOut={id:actionGroupIn.id,name:actionGroupIn.name};
+        if (actionGroupIn.actions.size>0){
+            actionGroupOut.actions=[];
+            for (let actionIn of actionGroupIn.actions.values()){
+                if (actionIn.isDescribed){
+                    actionGroupOut.actions.push({id:actionIn.id,copy:"true"});
+                }
+                else {
+                    let actionOut = {};
+                    actionOut.id = actionIn.id;
+                    actionOut.name = deviceFrom?deviceFrom.name+" - "+actionIn.name:actionIn.name;
+                    actionOut.isChangeable = actionIn.isChangeable;
+                    actionOut.format = actionIn.format;
+                    if (actionIn.description) actionOut.description = actionIn.description;
+                    actionOut.isNeedStatistics = actionIn.isNeedStatistics;
+                    if (actionIn.submitName) actionOut.submitName = actionIn.submitName;
+                    if (actionIn.range) {
+                        actionOut.range = [];
+                        for (let itemIn of actionIn.range.values()) {
+                            let itemOut = {};
+                            itemOut.id = itemIn.id;
+                            if (itemIn.color) itemOut.color = itemIn.color;
+                            if (itemIn.name) itemOut.name = itemIn.name;
+                            if (itemIn.from != null) itemOut.from = itemIn.from + "";
+                            if (itemIn.to != null) itemOut.to = itemIn.to + "";
+                            actionOut.range.push(itemOut);
+                        }
+                    }
+                    if (actionIn.supportActions) {
+                        actionOut.support = [];
+                        for (let supportActionIn of actionIn.supportActions.values()) {
+                            let supportActionOut = {};
+                            supportActionOut.id = supportActionIn.id;
+                            supportActionOut.name = supportActionIn.name;
+                            supportActionOut.isChangeable = supportActionIn.isChangeable;
+                            supportActionOut.format = supportActionIn.format;
+                            if (supportActionIn.isDeactivator) supportActionOut.isDeactivator = supportActionIn.isDeactivator;
+                            supportActionOut.isIndividual = supportActionIn.isIndividual;
+                            supportActionOut.isNeedStatistics = supportActionIn.isNeedStatistics;
+                            if (supportActionIn.description) supportActionOut.description = supportActionIn.description;
+                            if (supportActionIn.submitName) supportActionOut.submitName = supportActionIn.submitName;
+                            if (supportActionIn.active) supportActionOut.active = supportActionIn.active;
+                            if (supportActionIn.range) {
+                                supportActionOut.range = [];
+                                for (let itemIn of supportActionIn.range.values()) {
+                                    let itemOut = {};
+                                    itemOut.id = itemIn.id;
+                                    if (itemIn.color) itemOut.color = itemIn.color;
+                                    if (itemIn.name) itemOut.name = itemIn.name;
+                                    if (itemIn.from != null) itemOut.from = itemIn.from + "";
+                                    if (itemIn.to != null) itemOut.to = itemIn.to + "";
+                                    supportActionOut.range.push(itemOut);
+                                }
+                            }
+                            actionOut.support.push(supportActionOut);
+                        }
+                    }
+                    actionGroupOut.actions.push(actionOut);
+                    actionIn.isDescribed=true;
+                }
+            }
+        }
+        if (actionGroupIn.actionGroups.size>0){
+            actionGroupOut.actionGroups=[];
+            fillActionGroups(actionGroupIn.actionGroups.values(),actionGroupOut.actionGroups,deviceFrom);
+        }
+        actionGroupsOut.push(actionGroupOut);
+    }
+}
 class Item {
     constructor(data, owner) {
         this.owner = owner;
@@ -130,7 +201,7 @@ class MainItem extends Item {
 class SupportItem extends Item {
     constructor(data, owner) {
         super(data, owner);
-        if ("isDeactivator" in data) this.isDeactivator = data.isDeactivator == "true";
+        if ("isDeactivator" in data) this.isDeactivator = data.isDeactivator;
         else this.isDeactivator = false;
         if ("description" in data) this.description = data.description;
         else this.description = null;
@@ -142,10 +213,10 @@ class Action {
         this.device = device;
         this.name = makeBigFirstLetter(data.name);
         this.format = data.format;
-        this.isChangeable = data.isChangeable == "true";
+        this.isChangeable = data.isChangeable;
         this.submitName = null;
         if ("submitName" in data) this.submitName = makeBigFirstLetter(data.submitName);
-        this.isNeedStatistics = data.isNeedStatistics == "true";
+        this.isNeedStatistics = data.isNeedStatistics;
         this.id = +data.id;
         device.actions.set(this.id, this);
         this.description = null;
@@ -218,8 +289,8 @@ class SupportAction extends Action {
     constructor(data, owner, device) {
         super(data, device);
         this.owner=owner;
-        this.isDisactivator = data.isDisactivator == "true";
-        this.isIndividual = data.isIndividual == "true";
+        this.isDeactivator = data.isDeactivator;
+        this.isIndividual = data.isIndividual;
         this.range = null;
         if ("range" in data) {
             let r = new Map();
@@ -374,7 +445,7 @@ class MainAction extends Action {
                     }
                 }
                 let algorithm = drawManager.activeTheme.algorithm;
-                drawManager[algorithm + "SupportAlgorithm"](supportActions, mainActionDom.width());
+                drawManager[algorithm + "SupportAlgorithm"](supportActions);
             });
         }
         this.domElement.set(id,mainActionDom);
@@ -403,6 +474,10 @@ class ActionGroup {
                 if (data.actions[i].copy&&data.actions[i].copy=="true") {
                     mainAction=this.device.actions.has(+data.actions[i].id)?this.device.actions.get(+data.actions[i].id):null;
                     if (mainAction) mainAction.owners.set(this.id,this);
+                }
+                else  if (this.device.actions.has(+data.actions[i].id)){
+                    mainAction=this.device.actions.get(+data.actions[i].id);
+                    mainAction.owners.set(this.id,this);
                 }
                 else mainAction=new MainAction(data.actions[i], this, device);
                 this.actions.set(+data.actions[i].id, mainAction);
@@ -553,7 +628,7 @@ class ActionGroup {
                             if (group.domElement) group.domElement.remove();
                             group.domElement=null;
                         }
-                        self.device.getDialogManager().hideDialog();
+                        drawManager.getDialogManager().hideDialog();
                         self.device.changeManager.typeOfChanging="inProcess";
                         self.device.showNewGroup(self.id);
                     }));
@@ -664,7 +739,7 @@ class ActionGroup {
             device.id=self.device.id;
             device.name=self.device.name;
             device.thingGroup=self.device.thingGroup;
-            device.updateTime=self.device.updateTime/1000+"";
+            device.updateTime=self.device.updateTime/1000;
             device.actionGroups=[];
             fillActionGroups(self.device.actionGroups.get(-1).actionGroups.values(),device.actionGroups);
             for (let action of self.device.actions.values()){
@@ -693,77 +768,6 @@ class ActionGroup {
                 }
             }
             */
-            function fillActionGroups(actionGroupsIn,actionGroupsOut) {
-                for (let actionGroupIn of actionGroupsIn){
-                    let actionGroupOut={id:actionGroupIn.id,name:actionGroupIn.name};
-                    if (actionGroupIn.actions.size>0){
-                        actionGroupOut.actions=[];
-                        for (let actionIn of actionGroupIn.actions.values()){
-                            if (actionIn.isDescribed){
-                                actionGroupOut.actions.push({id:actionIn.id,copy:"true"});
-                            }
-                            else {
-                                let actionOut = {};
-                                actionOut.id = actionIn.id;
-                                actionOut.name = actionIn.name;
-                                actionOut.isChangeable = actionIn.isChangeable + "";
-                                actionOut.format = actionIn.format;
-                                if (actionIn.description) actionOut.description = actionIn.description;
-                                actionOut.isNeedStatistics = actionIn.isNeedStatistics + "";
-                                if (actionIn.submitName) actionOut.submitName = actionIn.submitName;
-                                if (actionIn.range) {
-                                    actionOut.range = [];
-                                    for (let itemIn of actionIn.range.values()) {
-                                        let itemOut = {};
-                                        itemOut.id = itemIn.id;
-                                        if (itemIn.color) itemOut.color = itemIn.color;
-                                        if (itemIn.name) itemOut.name = itemIn.name;
-                                        if (itemIn.from != null) itemOut.from = itemIn.from + "";
-                                        if (itemIn.to != null) itemOut.to = itemIn.to + "";
-                                        actionOut.range.push(itemOut);
-                                    }
-                                }
-                                if (actionIn.supportActions) {
-                                    actionOut.support = [];
-                                    for (let supportActionIn of actionIn.supportActions.values()) {
-                                        let supportActionOut = {};
-                                        supportActionOut.id = supportActionIn.id;
-                                        supportActionOut.name = supportActionIn.name;
-                                        supportActionOut.isChangeable = supportActionIn.isChangeable + "";
-                                        supportActionOut.format = supportActionIn.format;
-                                        if (supportActionIn.isDeactivator) supportActionOut.isDeactivator = supportActionIn.isDeactivator + "";
-                                        supportActionOut.isIndividual = supportActionIn.isIndividual + "";
-                                        supportActionOut.isNeedStatistics = supportActionIn.isNeedStatistics + "";
-                                        if (supportActionIn.description) supportActionOut.description = supportActionIn.description;
-                                        if (supportActionIn.submitName) supportActionOut.submitName = supportActionIn.submitName;
-                                        if (supportActionIn.active) supportActionOut.active = supportActionIn.active;
-                                        if (supportActionIn.range) {
-                                            supportActionOut.range = [];
-                                            for (let itemIn of supportActionIn.range.values()) {
-                                                let itemOut = {};
-                                                itemOut.id = itemIn.id;
-                                                if (itemIn.color) itemOut.color = itemIn.color;
-                                                if (itemIn.name) itemOut.name = itemIn.name;
-                                                if (itemIn.from != null) itemOut.from = itemIn.from + "";
-                                                if (itemIn.to != null) itemOut.to = itemIn.to + "";
-                                                supportActionOut.range.push(itemOut);
-                                            }
-                                        }
-                                        actionOut.support.push(supportActionOut);
-                                    }
-                                }
-                                actionGroupOut.actions.push(actionOut);
-                                actionIn.isDescribed=true;
-                            }
-                        }
-                    }
-                    if (actionGroupIn.actionGroups.size>0){
-                        actionGroupOut.actionGroups=[];
-                        fillActionGroups(actionGroupIn.actionGroups.values(),actionGroupOut.actionGroups);
-                    }
-                    actionGroupsOut.push(actionGroupOut);
-                }
-            }
 
         }));
         editContainerDom.append($("<div class='edit active cancel' id='cancel"+this.id+"'>Отменить</div>").on("click",function (e) {
@@ -915,10 +919,14 @@ class ActionGroup {
                 actionContainer.append(actionAvatarContainerDom);
                 let sortableElem=actionAvatarContainerDom;
                 sortableElem.sortable({ tolerance:"pointer",distance:15,update:(e,ui)=>{
+                    if (drawManager.secondDevice&&drawManager.wasDroppedAction){
+                        drawManager.wasDroppedAction=false;
+                        return;
+                    }
                     this.actions=new Map();
-                    for (let stringId of sortableElem.sortable("toArray")){
-                        let id=+stringId.substring(3);
-                        this.actions.set(id,this.device.actions.get(id));
+                    for (let stringId of sortableElem.sortable("toArray")) {
+                            let id = +stringId.substring(3);
+                            this.actions.set(id, this.device.actions.get(id));
                     }
                 }});
             }
@@ -1053,6 +1061,7 @@ getGroupId(){
 
     showNewGroup(id) {
         if (this.isSecond){
+            if (this.activeGroup&&this.activeGroup.domElement) this.activeGroup.domElement.remove();
             this.activeGroup = this.actionGroups.get(+id);
             drawManager.device.showNewGroup(null);
             return;
@@ -1095,6 +1104,7 @@ class DrawManager {
         this.deviceDomWidth = null;
         this.bodyDom=null;
         this.dialogManager=null;
+        this.wasDroppedAction=false;
     }
 
     draw() {
@@ -1116,6 +1126,9 @@ class DrawManager {
             if (device.id==this.device.id) continue;
             deviceShortcutContainerDom.append($("<a class='deviceShortcut' id='deviceShortcut_"+device.id+"' href='http://iotmanager.local/"+device.id+"'>"+makeBigFirstLetter(device.thing_name)+"</a>"));
         }
+        if (this.device.devices.length==1) deviceShortcutContainerDom.css({
+            "padding":0
+        });
         $("header").append("<h1>"+this.device.name+"</h1>").append(deviceShortcutContainerDom);
         this[this.activeTheme.algorithm + "Algorithm"]();
     }
@@ -1149,6 +1162,7 @@ class DrawManager {
         this.device.showNewGroup(null);
         function dropHandle(deviceTo, deviceFrom) {
             return function (e,ui) {
+                drawManager.wasDroppedAction=true;
                 let idString=ui.draggable.attr("id");
                 if (idString.indexOf("aV_")==0||idString.indexOf("aS_")==0){
                     let id=+idString.substr(3);
@@ -1159,7 +1173,60 @@ class DrawManager {
                         deviceTo.activeGroup=newGroup;
                     }
                     let group=deviceTo.activeGroup;
-                    group.actions.set(id,deviceFrom.actions.get(id));
+                    if (group.actions.has(id)) return;
+                    if (deviceTo.actions.has(id)){
+                        let a=deviceTo.actions.get(id);
+                        a.owners.set(group.id,group);
+                        group.actions.set(a.id,a);
+                        self.device.showNewGroup(null);
+                        return;
+                    }
+                    let action=deviceFrom.actions.get(id);
+                    let prop={name:true,format:true,isChangeable:true,submitName:true,isNeedStatistics:true,id:true,description:true};
+                    for (let key in action){
+                        if (key in prop){
+                            if (key=="name") prop[key]=deviceFrom.name+" - "+action[key];
+                            else prop[key]=action[key];
+                        }
+                    }
+                    let copyAction=new MainAction(prop,group,deviceTo);
+                    copyAction.range=action.range;
+                    copyAction.supportActions=action.supportActions;
+                    deviceTo.actions.set(copyAction.id,copyAction);
+                    group.actions.set(copyAction.id,copyAction);
+                }
+                else {
+                    if (idString.indexOf("groupInGroup_")==0) drawManager.wasDroppedAction=false;
+                    let groupId=+ui.draggable.attr("data-id");
+                    let groupsIn=[];
+                    groupsIn.push(deviceFrom.actionGroups.get(groupId));
+                    let groupsOut=[];
+                    if (deviceFrom.isVirtual) fillActionGroups(groupsIn,groupsOut);
+                    else fillActionGroups(groupsIn,groupsOut,deviceFrom);
+                    for (let action of deviceFrom.actions.values()){
+                        if (action.isDescribed) action.isDescribed=false;
+                    }
+                    if (deviceTo.actionGroups.size==1){
+                        deviceTo.domElement.find("p.temp").remove();
+                        let newGroup=new ActionGroup(groupsOut[0],deviceTo.actionGroups.get(-1),deviceTo);
+                        deviceTo.actionGroups.get(-1).actionGroups.set(newGroup.id,newGroup);
+                        deviceTo.activeGroup=newGroup;
+                    }
+                    else {
+                        let group=deviceTo.activeGroup;
+                        let newGroup=new ActionGroup(groupsOut[0], group, deviceTo);
+                        group.actionGroups.set(newGroup.id,newGroup);
+                    }
+                    for (let group of deviceTo.actionGroups.values()){//находим copy-null-actions и присваиваем оригинал, а также формируем json-строку для получения текущего состояния action-ов
+                        for (let entry of group.actions){
+                            if (!entry[1]){
+                                let mainAction=this.actions.get(entry[0]);
+                                mainAction.owners.set(group.id,group);
+                                group.actions.set(entry[0],mainAction);
+                            }
+                        }
+                    }
+
                 }
                 self.device.showNewGroup(null);
             }
@@ -1187,21 +1254,16 @@ class DrawManager {
             }
             else {
                 let actionGroupDom = activeGroup.draw();
-                actionGroupDom.addClass("clearFix");
-                actionGroupDom.css({
-                    "width": containerWidth + "px"
-                });
                 let currentLevelGroupDom = actionGroupDom.find(".currentLevelGroup");
                 if (currentLevelGroupDom.length > 0) {
                     containerWidth -= 202;
                 }
                 let mainContentDom = actionGroupDom.find(".mainContent");
                 mainContentDom.css({
-                    "width": containerWidth + "px",
                     "min-height": $("section.container").height() + "px"
                 });
                 if (activeGroup.actions.size > 0) {
-                    let actionWidth = Math.floor(containerWidth / self.activeTheme.allLines) - self.activeTheme.allLines * 12;
+                    let actionWidth = Math.floor(containerWidth / self.activeTheme.allLines) - self.activeTheme.allLines * 15;
                     for (let action of activeGroup.actions.values()) {
                         action.domElement.get(activeGroup.id).css({
                             "flex-basis": actionWidth + "px"
@@ -1223,24 +1285,14 @@ class DrawManager {
                 for (let supportAction of action.supportActions.values()) {
                     if (supportAction.active == null) activeSupportActions.push(supportAction);
                 }
-                self[self.activeTheme.algorithm + "SupportAlgorithm"](activeSupportActions, action.domElement.get(activeGroup.id).width());
+                self[self.activeTheme.algorithm + "SupportAlgorithm"](activeSupportActions);
             }
         }
         function show(activeGroup) {
             let actionGroupDom = activeGroup.draw();
-            actionGroupDom.addClass("clearFix");
-            let containerWidth =self.deviceDomWidth;
-            actionGroupDom.css({
-                "width":containerWidth+"px"
-            });
-            let currentLevelGroupDom=actionGroupDom.find(".currentLevelGroup");
-            if (currentLevelGroupDom.length>0){
-                containerWidth-=202;
-            }
             let mainContentDom=actionGroupDom.find(".mainContent");
             let height=activeGroup.device.isSecond?$("section.container").height()-40:$("section.container").height();
             mainContentDom.css({
-                "width": containerWidth + "px",
                 "min-height": height + "px"
             });
             actionGroupDom.find("#groupOnTheLevel_"+activeGroup.id).css({
@@ -1253,18 +1305,9 @@ class DrawManager {
 
     }
 
-    simpleSupportAlgorithm(supportActions, actionWidth) {
-        let supportActionWidth = Math.floor(actionWidth / supportActions.length);
-        if (supportActionWidth < 250) {
-            let w = Math.floor(actionWidth / 250);
-            supportActionWidth = Math.floor(actionWidth / w) - w * 12;
-        }
-        else supportActionWidth -= supportActions.length * 12;
+    simpleSupportAlgorithm(supportActions) {
         for (let m = 0; m < supportActions.length; m++) {
             let supportActionDom = supportActions[m].domElement.get(this.device.activeGroup.id);
-            supportActionDom.css({
-                "width": supportActionWidth + "px",
-            });
             supportActionDom.show();
         }
     }
@@ -1310,7 +1353,6 @@ class DrawManager {
                 else contentDom.text(content);
             },
             showDialog:function (type) {
-                console.log(this.dialog.find("h1").html());
                 drawManager[drawManager.activeTheme.algorithm+"ShowDialog"](type);
             },
             hideDialog:function () {

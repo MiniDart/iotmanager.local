@@ -61,7 +61,8 @@ class Model_allthings extends Model
             $mysqli->close();
             return null;
         }
-        $res=$mysqli->query("INSERT INTO things(uri,thing_name,thing_group,update_time) VALUES ('$uri','$file[name]','$file[thingGroup]','$file[updateTime]')");
+        $is_virtual=isset($file["isVirtual"])?$file["isVirtual"]:false;
+        $res=$mysqli->query("INSERT INTO things(uri,thing_name,thing_group,update_time,is_virtual) VALUES ('$uri','$file[name]','$file[thingGroup]',$file[updateTime],'$is_virtual')");
         if (!$res) echo $mysqli->error;
         $this->thing_id=$mysqli->insert_id;
         unset($file['uri']);
@@ -89,13 +90,13 @@ class Model_allthings extends Model
                 for ($l = 0; $l < $actions_count; $l++) {
                     $action =& $actions[$l];
                     $is_supported = isset($action['support'][0]);
-                    $is_changeable = $action['isChangeable'] == "true" ? true : false;
-                    $is_need_statistics = $action['isNeedStatistics'] == "true" ? true : false;
+                    //$is_changeable = $action['isChangeable'] == "true" ? true : false;
+                    //$is_need_statistics = $action['isNeedStatistics'] == "true" ? true : false;
                     $action_description = isset($action['description']) ? $action['description'] : null;
                     $submit_name = null;
                     if (isset($action['submitName'])) $submit_name = $action['submitName'];
                     $action_uri=$mysqli->real_escape_string($action['uri']);
-                    $query = "INSERT INTO actions_description(uri,thing_id,action_name,format,is_changeable,description,submit_name,is_supported,is_need_statistics) VALUES ('$action_uri',$this->thing_id,'$action[name]','$action[format]','$is_changeable','$action_description','$submit_name','$is_supported','$is_need_statistics')";
+                    $query = "INSERT INTO actions_description(uri,thing_id,action_name,format,is_changeable,description,submit_name,is_supported,is_need_statistics) VALUES ('$action_uri',$this->thing_id,'$action[name]','$action[format]','$action[isChangeable]','$action_description','$submit_name','$is_supported','$action[isNeedStatistics]')";
                     if (!$mysqli->query($query)) {
                         echo $mysqli->error;
                         return null;
@@ -127,7 +128,7 @@ class Model_allthings extends Model
                             $support_action =& $support_actions[$n];
                             $is_changeable = $support_action['isChangeable'] == "true" ? true : false;
                             $is_need_statistics = $support_action['isNeedStatistics'] == "true" ? true : false;
-                            if (isset($support_action['isDeactivator'])) $is_disactivator = $support_action['isDeactivator'] == "true" ? true : false;
+                            if (isset($support_action['isDeactivator'])) $is_disactivator = $support_action['isDeactivator'];
                             else $is_disactivator = false;
                             $is_individual = $support_action['isIndividual'] == "true" ? true : false;
                             $support_submit_name = null;
@@ -135,7 +136,7 @@ class Model_allthings extends Model
                             if (isset($support_action['submitName'])) $support_submit_name = $support_action['submitName'];
                             $support_active = isset($support_action['active']) ? $support_action['active'] : null;
                             $support_action_uri=$mysqli->real_escape_string($support_action['uri']);
-                            $query = "INSERT INTO actions_description(uri,action_owner_id,action_name,is_changeable,format,description,submit_name,is_need_statistics,thing_id,is_individual,is_deactivator,active) VALUES ('$support_action_uri',$action_id,'$support_action[name]','$is_changeable','$support_action[format]','$support_action_description','$support_submit_name','$is_need_statistics',$this->thing_id,'$is_individual','$is_disactivator','$support_active')";
+                            $query = "INSERT INTO actions_description(uri,action_owner_id,action_name,is_changeable,format,description,submit_name,is_need_statistics,thing_id,is_individual,is_deactivator,active) VALUES ('$support_action_uri',$action_id,'$support_action[name]','$support_action[isChangeable]','$support_action[format]','$support_action_description','$support_submit_name','$support_action[isNeedStatistics]',$this->thing_id,'$is_individual','$is_disactivator','$support_active')";
                             if (!$mysqli->query($query)) {
                                 echo $mysqli->error . ", ";
                                 return null;
