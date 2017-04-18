@@ -45,6 +45,19 @@ class Model_allthings extends Model
         if ($mysqli->connect_errno) {
             die("Can't connect database!!!");
         }
+        $is_virtual=isset($file["isVirtual"])?$file["isVirtual"]:false;
+        if ($is_virtual){
+            $query="INSERT INTO things(thing_name,thing_group,update_time,is_virtual) VALUES ('$file[name]','$file[thingGroup]',$file[updateTime],'$is_virtual')";
+            $res=$mysqli->query($query);
+            if (!$res) echo $mysqli->error;
+            $this->thing_id=$mysqli->insert_id;
+            $file['id']=$this->thing_id;
+            $creation_line=json_encode($file);
+            $res=$mysqli->query("UPDATE things SET creation_line='$creation_line' WHERE id=$this->thing_id");
+            if (!$res) echo $mysqli->error;
+            $mysqli->close();
+            return $this->thing_id;
+        }
         $uri=$mysqli->real_escape_string($file['uri']);
         $query="SELECT COUNT(*) FROM things WHERE uri='$uri'";
         if ($res=$mysqli->query($query)){
@@ -61,7 +74,6 @@ class Model_allthings extends Model
             $mysqli->close();
             return null;
         }
-        $is_virtual=isset($file["isVirtual"])?$file["isVirtual"]:false;
         $res=$mysqli->query("INSERT INTO things(uri,thing_name,thing_group,update_time,is_virtual) VALUES ('$uri','$file[name]','$file[thingGroup]',$file[updateTime],'$is_virtual')");
         if (!$res) echo $mysqli->error;
         $this->thing_id=$mysqli->insert_id;
@@ -90,8 +102,6 @@ class Model_allthings extends Model
                 for ($l = 0; $l < $actions_count; $l++) {
                     $action =& $actions[$l];
                     $is_supported = isset($action['support'][0]);
-                    //$is_changeable = $action['isChangeable'] == "true" ? true : false;
-                    //$is_need_statistics = $action['isNeedStatistics'] == "true" ? true : false;
                     $action_description = isset($action['description']) ? $action['description'] : null;
                     $submit_name = null;
                     if (isset($action['submitName'])) $submit_name = $action['submitName'];
@@ -126,8 +136,6 @@ class Model_allthings extends Model
                         $support_actions_count = count($support_actions);
                         for ($n = 0; $n < $support_actions_count; $n++) {
                             $support_action =& $support_actions[$n];
-                            $is_changeable = $support_action['isChangeable'] == "true" ? true : false;
-                            $is_need_statistics = $support_action['isNeedStatistics'] == "true" ? true : false;
                             if (isset($support_action['isDeactivator'])) $is_disactivator = $support_action['isDeactivator'];
                             else $is_disactivator = false;
                             $is_individual = $support_action['isIndividual'] == "true" ? true : false;

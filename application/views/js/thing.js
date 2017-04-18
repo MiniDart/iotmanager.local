@@ -507,9 +507,13 @@ class ActionGroup {
         if (this.device.isChangingNow){
             let sortableElem=$("<div class='currentLevelGroup'></div>");
             for (let actionGroup of this.owner.actionGroups.values()) {
-                sortableElem.append("<div class='groupOnTheLevel shortcutGroup' id='groupOnTheLevel_"+actionGroup.id+ "' data-id='" + actionGroup.id + "'>" + actionGroup.name + "</div>");
+                sortableElem.append("<div class='groupOnTheLevel shortcutGroup' id='groupOnTheLevel_"+actionGroup.id+ "' data-id='" + actionGroup.id + "' data-dev-id='"+self.device.id+"'>" + actionGroup.name + "</div>");
             }
             sortableElem.sortable({tolerance:"pointer",distance:15,update:(e,ui)=>{
+                if (drawManager.secondDevice&&drawManager.wasDroppedAction){
+                    drawManager.wasDroppedAction=false;
+                    return;
+                }
                 this.owner.actionGroups=new Map();
                 for (let strId of sortableElem.sortable("toArray")){
                     let id=+strId.substring(16);
@@ -562,6 +566,7 @@ class ActionGroup {
                             let device = new Device(data);
                             device.isSecond = true;
                             device.isChangingNow = true;
+                            device.isVirtual=true;
                             device.changeManager.typeOfChanging = "inProcess";
                             drawManager.secondDevice = device;
                             $(this).remove();
@@ -573,6 +578,9 @@ class ActionGroup {
                     dialogManager.showDialog("form");
 
                 }));
+                if (!self.device.isVirtual){
+                    deviceShortcutContainerDom.find("a[data-isVirtual=0]").hide();
+                }
             }
             self.device.showNewGroup(self.id);
         }));
@@ -682,6 +690,20 @@ class ActionGroup {
             });
             dialogManager.showDialog("form");
         }));
+        editContainerDom.append($("<div class='edit active renameGroup' id='renameGroup_"+this.id+"'>Переименовать группу</div>").on("click",(e)=>{
+            let dialogManager=drawManager.getDialogManager();
+            dialogManager.setHeader("Введите новое имя группы:");
+            dialogManager.fillContent((content)=>{
+                content.append("<p><input type='text' class='input'></p>");
+                content.append($("<button>Переименовать</button>").on("click",(e)=>{
+                    let newName=content.find(".input").val();
+                    self.setName(newName);
+                    dialogManager.hideDialog();
+                    self.device.showNewGroup(self.id);
+                }));
+            });
+            dialogManager.showDialog("form");
+        }));
         editContainerDom.append($("<div class='edit active delete' id='delete_"+this.id+"'>Удалить</div>").on("click",(e)=>{
             let dialogManager=drawManager.getDialogManager();
             if (this.actionGroups.size>0){
@@ -728,16 +750,10 @@ class ActionGroup {
             this.device.actionGroups.delete(this.id);
         }));
         editContainerDom.append($("<div class='edit active save' id='save_"+this.id+"'>Сохранить</div>").on("click",function (e) {
-            self.device.isChangingNow=false;
-            self.device.changeManager.clear();
-            for (let group of self.device.actionGroups.values()){
-                if (group.domElement) group.domElement.remove();
-                group.domElement=null;
-            }
-            self.device.showNewGroup(self.id);
             let device={};
             device.id=self.device.id;
             device.name=self.device.name;
+            device.isVirtual=self.device.isVirtual;
             device.thingGroup=self.device.thingGroup;
             device.updateTime=self.device.updateTime/1000;
             device.actionGroups=[];
@@ -746,10 +762,84 @@ class ActionGroup {
                 if (action.isDescribed) action.isDescribed=false;
             }
             let json_dev=JSON.stringify(device);
-            dataJson='{"devices":'+JSON.stringify(self.device.devices)+',';
-            dataJson+='"creation_line":'+json_dev+'}';
-            $.post(self.device.id, {"newLine":json_dev}, function (res) {
-            });
+            let dialogManager=drawManager.getDialogManager();
+            if (drawManager.secondDevice){
+                if (drawManager.secondDevice.id==self.device.id){
+                    if (self.device.id==-1){
+                        $.post("/",{"new_thing":json_dev},function (res) {
+                            if (res.indexOf("Success-")==0){
+                                askAboutFurther(res.substr(8));
+                            }
+                            else {
+                                dialogManager.setHeader("Ошибка!");
+                                dialogManager.fillContent("Устройство не создано.");
+                                dialogManager.showDialog("error");
+                            }
+                        });
+                    }
+                    else {
+                        $.post(self.device.id, {"newLine":json_dev}, function (res) {
+                            if (res=="Updated") {
+                                askAboutFurther(self.device.id);
+                            }
+                            else {
+                                dialogManager.setHeader("Ошибка!");
+                                dialogManager.fillContent("Устройство не обновлено.");
+                                dialogManager.showDialog("error");
+                            }
+                        });
+                    }
+                }
+                else {
+                    dialogManager.setHeader("Изменения устройства "+drawManager.secondDevice.name+" не сохранены, выберите дальнейшие действия:");
+                    dialogManager.fillContent((content)=>{
+                        content.append($("<button>Продолжить редактирование</button>").on("click",(e)=>{
+                            dialogManager.hideDialog();
+                        }));
+                        content.append($("<button>Сохранить изменения "+self.device.name+" и выйти из режима редактирования, несохранённые изменения " +
+                            "устройства "+drawManager.secondDevice.name+" будут утеряны</button>").on("click",(e)=>{
+                           deleteSecondDevice(dialogManager);
+                           upgradeDevice();
+                        }));
+                    });
+                    dialogManager.showDialog("form");
+                }
+            }
+            else upgradeDevice();
+            function askAboutFurther(id) {
+                dialogManager.setHeader("Изменения устройства "+drawManager.device.name+" не сохранены, выберите дальнейшие действия:");
+                dialogManager.fillContent((content)=>{
+                    content.append($("<button>Продолжить редактирование устройства"+drawManager.device.name+"</button>").on("click",(e)=>{
+                        deleteSecondDevice(dialogManager);
+                    }));
+                    content.append($("<button>Открыть новое устройство, несохранённые изменения " +
+                        "устройства "+drawManager.device.name+" будут утеряны</button>").on("click",(e)=>{
+                        document.location.href = "http://iotmanager.local/"+id;
+                    }));
+                });
+                dialogManager.showDialog("form");
+            }
+            function upgradeDevice() {
+                $.post(self.device.id, {"newLine":json_dev}, function (res) {
+                    if (res=="Updated") {
+                        self.device.isChangingNow = false;
+                        self.device.changeManager.clear();
+                        for (let group of self.device.actionGroups.values()) {
+                            if (group.domElement) group.domElement.remove();
+                            group.domElement = null;
+                        }
+                        self.device.showNewGroup(self.id);
+                        drawManager.bodyDom.find(".deviceShortcutContainer a").show();
+                        dataJson = '{"devices":' + JSON.stringify(self.device.devices) + ',';
+                        dataJson += '"creation_line":' + json_dev + '}';
+                    }
+                    else {
+                        dialogManager.setHeader("Ошибка!");
+                        dialogManager.fillContent("Устройство не обновлено.");
+                        dialogManager.showDialog("error");
+                    }
+                });
+            }
             /*
             check(JSON.parse($("#data_in_json").get(0).dataset.device),device,"root");
             function check(obj1,obj2,name) {
@@ -771,17 +861,27 @@ class ActionGroup {
 
         }));
         editContainerDom.append($("<div class='edit active cancel' id='cancel"+this.id+"'>Отменить</div>").on("click",function (e) {
-            drawManager.bodyDom.empty();
-            startDevice();
-            let activeGroup=drawManager.device.actionGroups.get(self.id)?drawManager.device.actionGroups.get(self.id):drawManager.device.actionGroups.get(0);
-            drawManager.device.showNewGroup(activeGroup.id);
+            if (drawManager.secondDevice&&drawManager.secondDevice.id==self.device.id){
+                deleteSecondDevice();
+            }
+            else {
+                drawManager.bodyDom.empty();
+                startDevice();
+                let activeGroup = drawManager.device.actionGroups.get(self.id) ? drawManager.device.actionGroups.get(self.id) : drawManager.device.actionGroups.get(0);
+                drawManager.device.showNewGroup(activeGroup.id);
+            }
 
         }));
         editContainerDom.append($("<div class='edit active reset' id='reset_"+this.id+"'>Заводские настройки</div>").on("click",function (e) {
             $.post(self.device.id,{"newLine":"reset"},function (res) {
-                dataJson=res;
-                drawManager.bodyDom.empty();
-                startDevice();
+                if (drawManager.secondDevice&&self.device.id==drawManager.secondDevice.id){
+                    deleteSecondDevice();
+                }
+                else {
+                    dataJson = res;
+                    drawManager.bodyDom.empty();
+                    startDevice();
+                }
             });
         }));
         editContainerDom.append($("<div class='edit insert insertInGroup' id='insertInGroup_"+this.id+"'>Вставить в гуппу</div>").on("click",function (e) {
@@ -829,7 +929,7 @@ class ActionGroup {
         if (this.actionGroups.size > 0) {
             let actionGroupContainer = $("<div class='actionGroupContainer'></div>");
             for (let actionGroup of this.actionGroups.values()) {
-                let groupInGroup=$("<div id='groupInGroup_" + actionGroup.id + "' class='groupInGroup shortcutGroup' data-id='" + actionGroup.id + "'>" + actionGroup.name + "</div>");
+                let groupInGroup=$("<div id='groupInGroup_" + actionGroup.id + "' class='groupInGroup shortcutGroup' data-id='" + actionGroup.id + "' data-dev-id='"+self.device.id+"'>" + actionGroup.name + "</div>");
                 actionGroupContainer.append(groupInGroup);
                 if (this.device.isChangingNow&&drawManager.secondDevice){
                     groupInGroup.draggable({ revert:true });
@@ -844,10 +944,16 @@ class ActionGroup {
                 let actionAvatarContainerDom=$("<div class='actionAvatarContainer'></div>");
                 for (let action of this.actions.values()) {
                     let idString=this.device.isSecond?"aS_":"aV_";
-                    let actionAvatarDom = $("<div class='actionAvatar' id='"+idString + action.id + "'><p>" + action.name + "</p></div>");
+                    let actionAvatarDom = $("<div class='actionAvatar' id='"+idString + action.id + "' data-dev-id='"+self.device.id+"'><p>" + action.name + "</p></div>");
                     let editActionContainerDom = $("<div class='editContainerAction'></div>");
-                    if (action.owners.size>1) editActionContainerDom.append($("<div class='editAction deleteAction' id='deleteAction_"+action.id+"'>Удалить</div>").on("click",(e)=>{
-                        if (!confirm("Вы действительно хотите удалить группу?")) return;
+                    if (action.owners.size>1||self.device.isVirtual) editActionContainerDom.append($("<div class='editAction deleteAction' id='deleteAction_"+action.id+"'>Удалить</div>").on("click",(e)=>{
+                        if (action.owners.size==1){
+                            if (!confirm("Это последнее действие в этом устройстве, вы действительно хотите её удалить?")) return;
+                            this.actions.delete(action.id);
+                            this.device.actions.delete(action.id);
+                            this.domElement.find("#"+idString+action.id).remove();
+                            return;
+                        }
                         this.actions.delete(action.id);
                         action.owners.delete(this.id);
                         if (action.domElement.has(this.id)) {
@@ -939,6 +1045,13 @@ class ActionGroup {
         }
         actionGroupDom.append(mainContentDom);
         this.domElement = actionGroupDom;
+        function deleteSecondDevice(dialogManager) {
+            if (dialogManager) dialogManager.hideDialog();
+            drawManager.secondDevice.domElement.remove();
+            drawManager.secondDevice=null;
+            $("section.container").removeClass("ifSecondDevice");
+            drawManager[drawManager.activeTheme.algorithm + "Algorithm"]();
+        }
         return actionGroupDom;
 
     }
@@ -1001,6 +1114,9 @@ class ActionGroup {
         }
         this.jsonForUpdateActions=JSON.stringify(allActions);
     }
+    setName(name){
+        this.name=name;
+    }
 }
 class Device {
     constructor(data_json) {
@@ -1034,7 +1150,7 @@ class Device {
         };
         this.domElement = null;
         this.isSecond=false;
-        this.isVirtual=this.thingGroup=="virtual";
+        this.isVirtual=data.isVirtual?data.isVirtual:false;
     }
 getGroupId(){
     if (this.isSecond){
@@ -1124,7 +1240,8 @@ class DrawManager {
         let deviceShortcutContainerDom=$("<div class='deviceShortcutContainer'></div>");
         for (let device of this.device.devices){
             if (device.id==this.device.id) continue;
-            deviceShortcutContainerDom.append($("<a class='deviceShortcut' id='deviceShortcut_"+device.id+"' href='http://iotmanager.local/"+device.id+"'>"+makeBigFirstLetter(device.thing_name)+"</a>"));
+            deviceShortcutContainerDom.append($("<a class='deviceShortcut' id='deviceShortcut_"+device.id+"' " +
+                "href='http://iotmanager.local/"+device.id+"' data-isVitrual='"+device.is_virtual+"'>"+makeBigFirstLetter(device.thing_name)+"</a>"));
         }
         if (this.device.devices.length==1) deviceShortcutContainerDom.css({
             "padding":0
@@ -1135,6 +1252,7 @@ class DrawManager {
 
     simpleAlgorithm() {
         let self=this;
+        if (this.device.domElement) this.device.domElement.remove();
         let deviceDom = this.device.draw();
         this.deviceDomWidth = this.secondDevice?Math.floor(document.documentElement.clientWidth/2)-4:document.documentElement.clientWidth;
         let section = $("section.container");
@@ -1144,9 +1262,8 @@ class DrawManager {
         });
         section.append(deviceDom);
         if (this.secondDevice){
-            section.css({
-                "display":"flex"
-                });
+            if (this.secondDevice.domElement) this.secondDevice.domElement.remove();
+            section.addClass("ifSecondDevice");
             let secondDeviceDom=this.secondDevice.draw();
             if (this.device.isVirtual) deviceDom.droppable({
                 drop:dropHandle(self.device,self.secondDevice)
@@ -1162,6 +1279,7 @@ class DrawManager {
         this.device.showNewGroup(null);
         function dropHandle(deviceTo, deviceFrom) {
             return function (e,ui) {
+                if ($(this).attr("id").substr(7)==ui.draggable.attr("data-dev-id")) return;
                 drawManager.wasDroppedAction=true;
                 let idString=ui.draggable.attr("id");
                 if (idString.indexOf("aV_")==0||idString.indexOf("aS_")==0){
@@ -1185,7 +1303,7 @@ class DrawManager {
                     let prop={name:true,format:true,isChangeable:true,submitName:true,isNeedStatistics:true,id:true,description:true};
                     for (let key in action){
                         if (key in prop){
-                            if (key=="name") prop[key]=deviceFrom.name+" - "+action[key];
+                            if (key=="name") prop[key]=deviceFrom.isVirtual?action[key]:deviceFrom.name+" - "+action[key];
                             else prop[key]=action[key];
                         }
                     }
@@ -1194,6 +1312,7 @@ class DrawManager {
                     copyAction.supportActions=action.supportActions;
                     deviceTo.actions.set(copyAction.id,copyAction);
                     group.actions.set(copyAction.id,copyAction);
+                    self.device.showNewGroup(null);
                 }
                 else {
                     if (idString.indexOf("groupInGroup_")==0) drawManager.wasDroppedAction=false;
@@ -1211,24 +1330,51 @@ class DrawManager {
                         let newGroup=new ActionGroup(groupsOut[0],deviceTo.actionGroups.get(-1),deviceTo);
                         deviceTo.actionGroups.get(-1).actionGroups.set(newGroup.id,newGroup);
                         deviceTo.activeGroup=newGroup;
+                        for (let group of deviceTo.actionGroups.values()){//находим copy-null-actions и присваиваем оригинал, а также формируем json-строку для получения текущего состояния action-ов
+                            for (let entry of group.actions){
+                                if (!entry[1]){
+                                    let mainAction=this.actions.get(entry[0]);
+                                    mainAction.owners.set(group.id,group);
+                                    group.actions.set(entry[0],mainAction);
+                                }
+                            }
+                        }
+                        self.device.showNewGroup(null);
                     }
                     else {
                         let group=deviceTo.activeGroup;
-                        let newGroup=new ActionGroup(groupsOut[0], group, deviceTo);
-                        group.actionGroups.set(newGroup.id,newGroup);
+                        let dialogManager=drawManager.getDialogManager();
+                        dialogManager.setHeader("Выберите место вставки новой группы:");
+                        dialogManager.fillContent((content)=>{
+                            content.append($("<form><p><label><input type='radio' name='place' value='in'>Внутрь группы</label></p>" +
+                                "<p><label><input type='radio' name='place' value='near'>На одном уровне с группой</label></p></form>")
+                                .append($("<input type='submit' value='Вставить'>").on("click",(e)=>{
+                                    let ans=content.find("input:checked").val();
+                                    let newGroup;
+                                    if (ans=="in") {
+                                        newGroup=new ActionGroup(groupsOut[0], group, deviceTo);
+                                        group.actionGroups.set(newGroup.id,newGroup);
+                                    }
+                                    else if (ans=="near"){
+                                        newGroup=new ActionGroup(groupsOut[0], group.owner, deviceTo);
+                                        group.owner.actionGroups.set(newGroup.id,newGroup);
+                                    }
+                                    for (let group of deviceTo.actionGroups.values()){//находим copy-null-actions и присваиваем оригинал, а также формируем json-строку для получения текущего состояния action-ов
+                                        for (let entry of group.actions){
+                                            if (!entry[1]){
+                                                let mainAction=this.actions.get(entry[0]);
+                                                mainAction.owners.set(group.id,group);
+                                                group.actions.set(entry[0],mainAction);
+                                            }
+                                        }
+                                    }
+                                    dialogManager.hideDialog();
+                                    deviceTo.showNewGroup(newGroup.id);
+                                })));
+                        });
+                        dialogManager.showDialog("form");
                     }
-                    for (let group of deviceTo.actionGroups.values()){//находим copy-null-actions и присваиваем оригинал, а также формируем json-строку для получения текущего состояния action-ов
-                        for (let entry of group.actions){
-                            if (!entry[1]){
-                                let mainAction=this.actions.get(entry[0]);
-                                mainAction.owners.set(group.id,group);
-                                group.actions.set(entry[0],mainAction);
-                            }
-                        }
-                    }
-
                 }
-                self.device.showNewGroup(null);
             }
         }
     }

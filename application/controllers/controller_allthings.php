@@ -34,7 +34,7 @@ class Controller_allthings extends Controller
     function post(){
         $data=$_POST['new_thing'];
         $result=$this->model->post($data);
-        if ($result!=null) echo "Thing was created";
+        if ($result!=null) echo "Success-".$result;
         else echo " Fail to create thing!!!";
     }
 }

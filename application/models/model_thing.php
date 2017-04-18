@@ -37,7 +37,7 @@ class Model_thing extends Model
             echo $mysqli->error;
             return null;
         }
-        $query="SELECT id,thing_name FROM things";
+        $query="SELECT id,thing_name,is_virtual FROM things";
         if ($res=$mysqli->query($query)){
             $things=json_encode($res->fetch_all(MYSQLI_ASSOC));
             $res->close();

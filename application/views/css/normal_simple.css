@@ -250,3 +250,6 @@ cursor:pointer;
 .normal-theme .actionGroup{
     display: flex;
 }
+.normal-theme .ifSecondDevice{
+    display: flex;
+}
