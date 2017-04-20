@@ -1322,6 +1322,12 @@ class DrawManager {
                     }
                 });
             }));
+        let columnAmountDom=$("<div class='edit chooseColumnAmount'><p>Количество столбцов</p></div>");
+        let possibleAmount=Math.floor($(".mainContent").width()/300);
+        for (let i=0;i<possibleAmount;i++){
+            columnAmountDom.append("<div class='numberOfColumn'>"+(i+1)+"</div>");
+        }
+        editContainer.append();
         header.append(editContainer);
         header.append("<h1>"+this.device.name+"</h1>").append(deviceShortcutContainerDom);
         this[this.activeTheme.algorithm + "Algorithm"]();

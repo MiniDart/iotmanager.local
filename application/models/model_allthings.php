@@ -17,6 +17,10 @@ class Model_allthings extends Model
         if ($mysqli->connect_errno) {
             echo "Не удалось подключиться к MySQL: (" . $mysqli->connect_errno . ") " . $mysqli->connect_error;
         }
+        if (!$mysqli->set_charset("utf8")) {
+            printf("Error loading character set utf8: %s\n", $mysqli->error);
+            exit();
+        }
         $query="SELECT id,thing_name FROM things";
         if ($res=$mysqli->query($query)){
             $data=$res->fetch_all(MYSQLI_ASSOC);
@@ -45,6 +49,10 @@ class Model_allthings extends Model
         if ($mysqli->connect_errno) {
             die("Can't connect database!!!");
         }
+        if (!$mysqli->set_charset("utf8")) {
+            printf("Error loading character set utf8: %s\n", $mysqli->error);
+            exit();
+        }
         $is_virtual=isset($file["isVirtual"])?$file["isVirtual"]:false;
         if ($is_virtual){
             $query="INSERT INTO things(thing_name,thing_group,update_time,is_virtual) VALUES ('$file[name]','$file[thingGroup]',$file[updateTime],'$is_virtual')";
@@ -52,7 +60,8 @@ class Model_allthings extends Model
             if (!$res) echo $mysqli->error;
             $this->thing_id=$mysqli->insert_id;
             $file['id']=$this->thing_id;
-            $creation_line=json_encode($file);
+            $creation_line=json_encode($file,JSON_UNESCAPED_UNICODE);
+            echo $creation_line;
             $res=$mysqli->query("UPDATE things SET creation_line='$creation_line' WHERE id=$this->thing_id");
             if (!$res) echo $mysqli->error;
             $mysqli->close();
@@ -80,7 +89,7 @@ class Model_allthings extends Model
         unset($file['uri']);
         $file['id']=$this->thing_id;
         $this->insertActionsIntoTable($file['actionGroups'], $mysqli);
-        $creation_line=json_encode($file);
+        $creation_line=json_encode($file,JSON_UNESCAPED_UNICODE);
         $res=$mysqli->query("UPDATE things SET creation_line='$creation_line' WHERE id=$this->thing_id");
         if (!$res) echo $mysqli->error;
         $mysqli->close();

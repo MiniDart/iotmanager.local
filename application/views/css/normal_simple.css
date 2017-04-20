@@ -46,6 +46,7 @@ font-size: 20px;
     padding: 10px 0;
 }
 .normal-theme .deviceShortcut{
+    color:rgba(192, 51, 28, 1);
     font-size: 30px;
     cursor: pointer;
     text-align: center;
@@ -98,7 +99,7 @@ cursor:pointer;
 }
 .normal-theme .mainContent{
     flex-grow: 1;
-    min-width: 800px;
+    min-width: 300px;
 border-left:1px solid white;
 box-sizing:border-box;
 }
@@ -148,7 +149,6 @@ padding:5px;
 }
 .normal-theme .mainContent .mainAction .value{
 height:30px;
-background:grey;
 text-align:center;
 }
 .normal-theme .mainContent .support{
