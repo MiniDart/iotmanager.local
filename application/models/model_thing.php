@@ -18,7 +18,7 @@ class Model_thing extends Model
             return $this->get_current_data($actions_json,$param);
         }
         else {
-            return $this->get_action($param);
+            return $this->get_action(stripos($param,"-string")?substr($param,0,stripos($param,"-string")):$param);
         }
 
     }
@@ -227,6 +227,48 @@ class Model_thing extends Model
     public function delete($param = null)
     {
         // TODO: Implement delete() method.
+        $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
+        if ($mysqli->connect_errno) {
+            die("Не удалось подключиться к MySQL");
+        }
+        $query="SELECT is_virtual FROM things WHERE id=$param";
+        if ($res=$mysqli->query($query)){
+            $data=$res->fetch_all(MYSQLI_ASSOC)[0]["is_virtual"];
+            $res->close();
+        }
+        else {
+            echo $mysqli->error;
+            return null;
+        }
+        if (!$data){
+            $query="SELECT id FROM actions_description WHERE thing_id=$param";
+            if ($res=$mysqli->query($query)){
+                $data=$res->fetch_all(MYSQLI_ASSOC);
+                $res->close();
+            }
+            else {
+                echo $mysqli->error;
+                return null;
+            }
+            foreach ($data as $str){
+                $query="DELETE FROM action_range WHERE action_id=$str[id]";
+                if (!$res=$mysqli->query($query)){
+                    echo $mysqli->error;
+                    return null;
+                }
+            }
+            $query="DELETE FROM actions_description WHERE thing_id=$param";
+            if (!$res=$mysqli->query($query)){
+                echo $mysqli->error;
+                return null;
+            }
+        }
+        $query="DELETE FROM things WHERE id=$param";
+        if (!$res=$mysqli->query($query)){
+            echo $mysqli->error;
+            return null;
+        }
+        return "Deleted";
     }
 
 }

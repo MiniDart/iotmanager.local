@@ -456,6 +456,9 @@ class MainAction extends Action {
         if (!this.domElement.has(groupId)) return;
         this.domElement.get(groupId).find(".value.main").text(val);
     }
+    setName(name){
+        this.name=makeBigFirstLetter(name);
+    }
 
 }
 class ActionGroup {
@@ -543,45 +546,6 @@ class ActionGroup {
         editContainerDom.append($("<div class='edit change' id='change_"+this.id+"'>Изменить</div>").on("click",function (e) {
             self.device.isChangingNow=true;
             self.device.changeManager.typeOfChanging="inProcess";
-            if (!self.device.isSecond) {
-                let deviceShortcutContainerDom = $(".deviceShortcutContainer");
-                deviceShortcutContainerDom.append($("<a class='createDevice deviceShortcut' href='#'>+</a>").on("click", function (e) {
-                    let dialogManager = drawManager.getDialogManager();
-                    dialogManager.setHeader("Введите название устройства");
-                    dialogManager.fillContent((content)=> {
-                        content.append($("<p><input type='text' class='newDeviceName'></p>"));
-                        content.append($("<input type='button' value='Создать устройство'>").on("click", (e)=> {
-                            let name = content.find(".newDeviceName").val();
-                            if (name.length == 0) {
-                                alert("Введите имя!");
-                                return;
-                            }
-                            let deviceDescription = {
-                                id: -1,
-                                name: name,
-                                thingGroup: "virtual"
-
-                            };
-                            let data = {creation_line: deviceDescription};
-                            let device = new Device(data);
-                            device.isSecond = true;
-                            device.isChangingNow = true;
-                            device.isVirtual=true;
-                            device.changeManager.typeOfChanging = "inProcess";
-                            drawManager.secondDevice = device;
-                            $(this).remove();
-                            dialogManager.hideDialog();
-                            self.device.domElement.remove();
-                            drawManager[drawManager.activeTheme.algorithm + "Algorithm"]();
-                        }));
-                    });
-                    dialogManager.showDialog("form");
-
-                }));
-                if (!self.device.isVirtual){
-                    deviceShortcutContainerDom.find("a[data-isVirtual=0]").hide();
-                }
-            }
             self.device.showNewGroup(self.id);
         }));
         editContainerDom.append($("<div class='edit cut active' id='cut" + this.id + "'>Вырезать</div>").on("click", function (e) {
@@ -706,26 +670,28 @@ class ActionGroup {
         }));
         editContainerDom.append($("<div class='edit active delete' id='delete_"+this.id+"'>Удалить</div>").on("click",(e)=>{
             let dialogManager=drawManager.getDialogManager();
-            if (this.actionGroups.size>0){
+            if (this.actionGroups.size>0&&!self.device.isVirtual){
                 dialogManager.setHeader("Ошибка!");
                 dialogManager.fillContent("Сначала Вам необходимо удалить или переместить все вложенные группы!");
                 dialogManager.showDialog("error");
                 return;
             }
             let unique=[];
-            for (let action of this.actions.values()){
-                if (action.owners.size==1)unique.push(action)
+            if (!self.device.isVirtual) {
+                for (let action of this.actions.values()) {
+                    if (action.owners.size == 1)unique.push(action)
+                }
             }
             if (unique.length>0){
-                dialogManager.setHeader("Вам необходимо скопировать или переместить следующие элементы:");
-                let elements="";
-                for (let action of unique){
-                    elements+=action.name+", ";
-                }
-                elements=elements.substring(0,elements.length-2);
-                dialogManager.fillContent(elements);
-                dialogManager.showDialog("error");
-                return;
+                    dialogManager.setHeader("Вам необходимо скопировать или переместить следующие элементы:");
+                    let elements = "";
+                    for (let action of unique) {
+                        elements += action.name + ", ";
+                    }
+                    elements = elements.substring(0, elements.length - 2);
+                    dialogManager.fillContent(elements);
+                    dialogManager.showDialog("error");
+                    return;
             }
             if (this.owner.actionGroups.size == 1 && this.owner.id == -1) {
                 alert("Error: You can't cut this group.");
@@ -1019,6 +985,20 @@ class ActionGroup {
                         aG.showEditButtons();
                         action.owners.delete(aG.id);
                     }));
+                    editActionContainerDom.append($("<div class='editAction renameAction' id='renameAction_"+action.id+"'>Переименовать</div>").on("click",(e)=>{
+                        let dialogManager=drawManager.getDialogManager();
+                        dialogManager.setHeader("Введите новое имя действия:");
+                        dialogManager.fillContent((content)=>{
+                            content.append("<p><input type='text' class='input'></p>");
+                            content.append($("<button>Переименовать</button>").on("click",(e)=>{
+                                let newName=content.find(".input").val();
+                                action.setName(newName);
+                                dialogManager.hideDialog();
+                                self.device.showNewGroup(self.id);
+                            }));
+                        });
+                        dialogManager.showDialog("form");
+                    }));
                     actionAvatarDom.prepend(editActionContainerDom);
                     actionAvatarContainerDom.append(actionAvatarDom);
                 }
@@ -1056,9 +1036,18 @@ class ActionGroup {
 
     }
     showEditButtons(){
+        let self=this;
+        let deviceShortcutContainerDom = $(".deviceShortcutContainer");
         if (this.device.isChangingNow) {
             this.domElement.find(".editContainer .edit").hide();
             this.domElement.find(".editContainerAction").hide();
+            if (!self.device.isSecond) {
+                $("header .editDeviceContainer").show();
+                deviceShortcutContainerDom.find(".createDevice").show();
+                if (!self.device.isVirtual){
+                    deviceShortcutContainerDom.find(".real").hide();
+                }
+            }
             switch (this.device.changeManager.typeOfChanging){
                 case "inProcess":
                     this.domElement.find(".editContainer .active").show();
@@ -1074,6 +1063,13 @@ class ActionGroup {
             }
         }
         else {
+            if (!self.device.isSecond) {
+                $("header .editDeviceContainer").hide();
+                deviceShortcutContainerDom.find(".createDevice").hide();
+                if (!self.device.isVirtual){
+                    deviceShortcutContainerDom.find(".real").show();
+                }
+            }
             this.domElement.find(".editContainer .edit").hide();
             this.domElement.find(".editContainer .change").show();
             this.domElement.find(".editContainerAction").hide();
@@ -1115,7 +1111,7 @@ class ActionGroup {
         this.jsonForUpdateActions=JSON.stringify(allActions);
     }
     setName(name){
-        this.name=name;
+        this.name=makeBigFirstLetter(name);
     }
 }
 class Device {
@@ -1173,8 +1169,6 @@ getGroupId(){
         return deviceDom;
     }
 
-    
-
     showNewGroup(id) {
         if (this.isSecond){
             if (this.activeGroup&&this.activeGroup.domElement) this.activeGroup.domElement.remove();
@@ -1196,6 +1190,10 @@ getGroupId(){
         let algorithm = drawManager.activeTheme.algorithm;
         drawManager[algorithm + "GroupAlgorithm"]();
         if (!this.isChangingNow) this.activeGroup.startUpdate();
+    }
+    setName(name){
+        this.name=makeBigFirstLetter(name);
+        $("header h1").text(this.name);
     }
 
 }
@@ -1240,13 +1238,92 @@ class DrawManager {
         let deviceShortcutContainerDom=$("<div class='deviceShortcutContainer'></div>");
         for (let device of this.device.devices){
             if (device.id==this.device.id) continue;
-            deviceShortcutContainerDom.append($("<a class='deviceShortcut' id='deviceShortcut_"+device.id+"' " +
-                "href='http://iotmanager.local/"+device.id+"' data-isVitrual='"+device.is_virtual+"'>"+makeBigFirstLetter(device.thing_name)+"</a>"));
+            let cls=device.is_virtual==0?"deviceShortcut real":"deviceShortcut";
+            deviceShortcutContainerDom.append($("<a class='"+cls+"' id='deviceShortcut_"+device.id+"' " +
+                "href='http://iotmanager.local/"+device.id+"'>"+makeBigFirstLetter(device.thing_name)+"</a>")
+                .on("click",(e)=>{
+                    if (!this.device.isChangingNow) return;
+                    e.preventDefault();
+                    let data_json=$.get(device.id+"-string",(res)=>{
+                        let newDevice=new Device(JSON.parse(res));
+                        newDevice.isSecond=true;
+                        newDevice.isChangingNow=true;
+                        newDevice.changeManager.typeOfChanging = "inProcess";
+                        drawManager.secondDevice=newDevice;
+                        $("section.container").empty();
+                        drawManager[drawManager.activeTheme.algorithm + "Algorithm"]();
+                    })
+                }));
         }
+        deviceShortcutContainerDom.append($("<a class='createDevice deviceShortcut' href='#'>+</a>").on("click", function (e) {
+            let dialogManager = drawManager.getDialogManager();
+            dialogManager.setHeader("Введите название устройства");
+            dialogManager.fillContent((content)=> {
+                content.append($("<p><input type='text' class='newDeviceName'></p>"));
+                content.append($("<input type='button' value='Создать устройство'>").on("click", (e)=> {
+                    let name = content.find(".newDeviceName").val();
+                    if (name.length == 0) {
+                        alert("Введите имя!");
+                        return;
+                    }
+                    let deviceDescription = {
+                        id: -1,
+                        name: name,
+                        thingGroup: "virtual"
+
+                    };
+                    let data = {creation_line: deviceDescription};
+                    let device = new Device(data);
+                    device.isSecond = true;
+                    device.isChangingNow = true;
+                    device.isVirtual=true;
+                    device.changeManager.typeOfChanging = "inProcess";
+                    drawManager.secondDevice = device;
+                    dialogManager.hideDialog();
+                    $("section.container").empty();
+                    drawManager[drawManager.activeTheme.algorithm + "Algorithm"]();
+                }));
+            });
+            dialogManager.showDialog("form");
+
+        }));
         if (this.device.devices.length==1) deviceShortcutContainerDom.css({
             "padding":0
         });
-        $("header").append("<h1>"+this.device.name+"</h1>").append(deviceShortcutContainerDom);
+        let header=this.bodyDom.find("header");
+        let editContainer=$("<div class='editDeviceContainer'></div>").hide();
+        editContainer.append($("<div class='edit renameDevice'>Переименовать устройство</div>").on("click", (e)=>{
+            let dialogManager=drawManager.getDialogManager();
+            dialogManager.setHeader("Введите новое имя устройства:");
+            dialogManager.fillContent((content)=>{
+                content.append("<p><input type='text' class='input'></p>");
+                content.append($("<button>Переименовать</button>").on("click",(e)=>{
+                    let newName=content.find(".input").val();
+                    this.device.setName(newName);
+                    dialogManager.hideDialog();
+                }));
+            });
+            dialogManager.showDialog("form");
+            }));
+        editContainer.append($("<div class='edit deleteDevice'>Удалить устройство</div>")
+            .on("click",(e)=>{
+                if (!confirm("Вы действительно хотите удалить устройство?")) return;
+                $.ajax({
+                    url: this.device.id,
+                    type: 'DELETE',
+                    success: (res)=>{
+                       if (res=="Deleted") document.location.href = "http://iotmanager.local/";
+                        else {
+                           let dialogManager=drawManager.getDialogManager();
+                           dialogManager.setHeader("Ошибка!");
+                           dialogManager.fillContent("Ошибка удаления устройства.");
+                           dialogManager.showDialog("error");
+                       }
+                    }
+                });
+            }));
+        header.append(editContainer);
+        header.append("<h1>"+this.device.name+"</h1>").append(deviceShortcutContainerDom);
         this[this.activeTheme.algorithm + "Algorithm"]();
     }
 

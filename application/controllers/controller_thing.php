@@ -27,11 +27,14 @@ class Controller_thing extends Controller
                 break;
             case "POST":
                 $this->post($param);
+                break;
+            case "DELETE":
+                $this->delete($param);
         }
     }
     function get($param){
         $data=$this->model->get($param);
-        if (stripos($param, "-value")){
+        if (stripos($param, "-value")||stripos($param,"-string")){
             $this->view->generate("actionsdata_view.php","empty_view.php",$data);
         }
         else {
@@ -44,6 +47,10 @@ class Controller_thing extends Controller
     }
     function post($thing_id){
         $status=$this->model->post($thing_id);
+        $this->view->generate("actionsdata_view.php","empty_view.php",$status);
+    }
+    function delete($thing_id){
+        $status=$this->model->delete($thing_id);
         $this->view->generate("actionsdata_view.php","empty_view.php",$status);
     }
 }

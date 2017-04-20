@@ -1,5 +1,6 @@
 body.normal-theme{
     background: rgba(192, 51, 28, 1);
+    color: white;
 }
 .normal-theme header{
     padding-top: 1px;
@@ -252,4 +253,20 @@ cursor:pointer;
 }
 .normal-theme .ifSecondDevice{
     display: flex;
+}
+.normal-theme .editDeviceContainer{
+    text-align:right;
+    font-size: 20px;
+    width: 40%;
+    position: absolute;
+    right: 0;
+    top:0;
+}
+.normal-theme .editDeviceContainer .edit{
+    display:inline-block;
+    padding-left:10px;
+    padding-right:10px;
+    background:red;
+    border:1px solid white;
+    cursor:pointer;
 }

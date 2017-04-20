@@ -58,7 +58,6 @@ class Route
         else{
             Route::ErrorPage404();
         }
-
     }
 
     static function ErrorPage404()
