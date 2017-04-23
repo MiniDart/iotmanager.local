@@ -56,7 +56,11 @@ function rankSort(a, b) {
 }
 function fillActionGroups(actionGroupsIn,actionGroupsOut,deviceFrom) {
     for (let actionGroupIn of actionGroupsIn){
-        let actionGroupOut={id:actionGroupIn.id,name:actionGroupIn.name};
+        let actionGroupOut={
+            id:actionGroupIn.id,
+            name:actionGroupIn.name,
+            allLines:actionGroupIn.allLines
+        };
         if (actionGroupIn.actions.size>0){
             actionGroupOut.actions=[];
             for (let actionIn of actionGroupIn.actions.values()){
@@ -444,7 +448,7 @@ class MainAction extends Action {
                         if (activeItems.indexOf(textVal) != -1) supportActions.push(supportAction);
                     }
                 }
-                let algorithm = drawManager.activeTheme.algorithm;
+                let algorithm = drawManager.algorithm;
                 drawManager[algorithm + "SupportAlgorithm"](supportActions);
             });
         }
@@ -495,6 +499,7 @@ class ActionGroup {
         this.jsonForUpdateActions=null;
         this.timerId=null;
         this.domElement = null;
+        this.allLines=data.allLines?data.allLines:2;
 
     }
     draw() {
@@ -543,11 +548,40 @@ class ActionGroup {
         }
         mainContentDom.append(pathContainerDom);
         let editContainerDom=$("<div class='editContainer'></div>");
-        editContainerDom.append($("<div class='edit change' id='change_"+this.id+"'>Изменить</div>").on("click",function (e) {
+        editContainerDom.append($("<div class='edit change' id='change_"+this.id+"'>Изменить структуру</div>").on("click",function (e) {
             self.device.isChangingNow=true;
             self.device.changeManager.typeOfChanging="inProcess";
             self.device.showNewGroup(self.id);
         }));
+        editContainerDom.append($("<div class='edit changeAppearance'>Изменить внешний вид</div>").on("click",(e)=>{
+            self.device.isChangingAppearance=true;
+            self.device.showNewGroup(self.id);
+        }));
+        let columnAmountDom=$("<div class='edit appearance chooseColumnAmount'>Количество столбцов</div>");
+        let numberContainerDom=$("<div class='numberContainer'></div>");
+        let possibleAmount=Math.floor((drawManager.deviceDomWidth-(self.owner.actionGroups.size==0?0:200))/300);
+        for (let i=0;i<possibleAmount;i++){
+            numberContainerDom.append("<div class='number"+(self.allLines==(i+1)?" equal":"")+"'>"+(i+1)+"</div>");
+        }
+        columnAmountDom.append(numberContainerDom);
+        columnAmountDom.on("click",".number",function (e){
+            let num=$(this).text();
+            self.setAllLines(num);
+            self.device.showNewGroup(null);
+        });
+        editContainerDom.append(columnAmountDom);
+        let widthChoiceDom=$("<div class='edit appearance widthChoice'>Выберите ширину зоны отображения устройства</div>");
+        let widthContainer=$("<div class='numberContainer'></div>");
+        for (let p of [100,75,50]){
+            widthContainer.append("<div class='number"+(p/100==this.device.width?" equal":"")+"' data-width='"+p/100+"'>"+p+"%</div>");
+        }
+        widthChoiceDom.append(widthContainer);
+        widthChoiceDom.on("click",".number",function (e) {
+            let width=$(this).attr("data-width");
+            self.device.setWidth(width);
+            self.device.showNewGroup(null);
+        });
+        editContainerDom.append(widthChoiceDom);
         editContainerDom.append($("<div class='edit cut active' id='cut" + this.id + "'>Вырезать</div>").on("click", function (e) {
             if (self.owner.actionGroups.size == 1 && self.owner.id == -1) {
                 alert("Error: You can't cut this group.");
@@ -716,18 +750,7 @@ class ActionGroup {
             this.device.actionGroups.delete(this.id);
         }));
         editContainerDom.append($("<div class='edit active save' id='save_"+this.id+"'>Сохранить</div>").on("click",function (e) {
-            let device={};
-            device.id=self.device.id;
-            device.name=self.device.name;
-            device.isVirtual=self.device.isVirtual;
-            device.thingGroup=self.device.thingGroup;
-            device.updateTime=self.device.updateTime/1000;
-            device.actionGroups=[];
-            fillActionGroups(self.device.actionGroups.get(-1).actionGroups.values(),device.actionGroups);
-            for (let action of self.device.actions.values()){
-                if (action.isDescribed) action.isDescribed=false;
-            }
-            let json_dev=JSON.stringify(device);
+            let json_dev=self.getDeviceInJson();
             let dialogManager=drawManager.getDialogManager();
             if (drawManager.secondDevice){
                 if (drawManager.secondDevice.id==self.device.id){
@@ -786,16 +809,18 @@ class ActionGroup {
                 dialogManager.showDialog("form");
             }
             function upgradeDevice() {
-                $.post(self.device.id, {"newLine":json_dev}, function (res) {
+                let name=self.device.wasNameChanged?self.device.name:"";
+                self.device.wasNameChanged=false;
+                $.post(self.device.id, {"newLine":json_dev,"newName":name}, function (res) {
                     if (res=="Updated") {
                         self.device.isChangingNow = false;
+                        self.device.isChangingAppearance=false;
                         self.device.changeManager.clear();
                         for (let group of self.device.actionGroups.values()) {
                             if (group.domElement) group.domElement.remove();
                             group.domElement = null;
                         }
                         self.device.showNewGroup(self.id);
-                        drawManager.bodyDom.find(".deviceShortcutContainer a").show();
                         dataJson = '{"devices":' + JSON.stringify(self.device.devices) + ',';
                         dataJson += '"creation_line":' + json_dev + '}';
                     }
@@ -1030,7 +1055,7 @@ class ActionGroup {
             drawManager.secondDevice.domElement.remove();
             drawManager.secondDevice=null;
             $("section.container").removeClass("ifSecondDevice");
-            drawManager[drawManager.activeTheme.algorithm + "Algorithm"]();
+            drawManager[drawManager.algorithm + "Algorithm"]();
         }
         return actionGroupDom;
 
@@ -1038,9 +1063,16 @@ class ActionGroup {
     showEditButtons(){
         let self=this;
         let deviceShortcutContainerDom = $(".deviceShortcutContainer");
-        if (this.device.isChangingNow) {
+        if (this.device.isChangingAppearance){
+            this.domElement.find(".editContainer .edit").hide();
+            this.domElement.find(".editContainer .appearance").show();
+            this.domElement.find(".editContainer .save").show();
+            this.domElement.find(".editContainer .cancel").show();
+        }
+        else if (this.device.isChangingNow) {
             this.domElement.find(".editContainer .edit").hide();
             this.domElement.find(".editContainerAction").hide();
+            deviceShortcutContainerDom.find(".createDevice").hide();
             if (!self.device.isSecond) {
                 $("header .editDeviceContainer").show();
                 deviceShortcutContainerDom.find(".createDevice").show();
@@ -1063,14 +1095,15 @@ class ActionGroup {
             }
         }
         else {
+            this.domElement.find(".editContainer .edit").hide();
             if (!self.device.isSecond) {
                 $("header .editDeviceContainer").hide();
+                this.domElement.find(".editContainer .changeAppearance").show();
                 deviceShortcutContainerDom.find(".createDevice").hide();
                 if (!self.device.isVirtual){
                     deviceShortcutContainerDom.find(".real").show();
                 }
             }
-            this.domElement.find(".editContainer .edit").hide();
             this.domElement.find(".editContainer .change").show();
             this.domElement.find(".editContainerAction").hide();
         }
@@ -1113,11 +1146,28 @@ class ActionGroup {
     setName(name){
         this.name=makeBigFirstLetter(name);
     }
+    setAllLines(num){
+        this.allLines=+num;
+    }
+    getDeviceInJson(){
+        let self=this;
+        let device={};
+        device.id=self.device.id;
+        device.name=self.device.name;
+        device.isVirtual=self.device.isVirtual;
+        device.thingGroup=self.device.thingGroup;
+        device.updateTime=self.device.updateTime/1000;
+        device.width=self.device.width;
+        device.actionGroups=[];
+        fillActionGroups(self.device.actionGroups.get(-1).actionGroups.values(),device.actionGroups);
+        for (let action of self.device.actions.values()){
+            if (action.isDescribed) action.isDescribed=false;
+        }
+        return JSON.stringify(device);
+    }
 }
 class Device {
-    constructor(data_json) {
-        this.devices=data_json.devices?data_json.devices:null;
-        let data=data_json.creation_line;
+    constructor(data) {
         this.id = +data.id;
         this.groupId=-2;
         this.name = makeBigFirstLetter(data.name);
@@ -1147,6 +1197,9 @@ class Device {
         this.domElement = null;
         this.isSecond=false;
         this.isVirtual=data.isVirtual?data.isVirtual:false;
+        this.isChangingAppearance=false;
+        this.wasNameChanged=false;
+        this.width=data.width?data.width:1;
     }
 getGroupId(){
     if (this.isSecond){
@@ -1180,6 +1233,10 @@ getGroupId(){
             if (this.activeGroup.domElement) this.activeGroup.domElement.remove();
             if (drawManager.secondDevice&&drawManager.secondDevice.activeGroup&&drawManager.secondDevice.activeGroup.domElement) drawManager.secondDevice.activeGroup.domElement.remove();
         }
+        if (this.isChangingAppearance&&this.activeGroup&&this.activeGroup.domElement){
+            this.activeGroup.domElement.remove();
+            this.activeGroup.domElement=null;
+        }
         if (id!=null) {
             if (this.activeGroup) {
                 this.activeGroup.stopUpdate();
@@ -1187,25 +1244,19 @@ getGroupId(){
             }
             this.activeGroup = this.actionGroups.get(+id);
         }
-        let algorithm = drawManager.activeTheme.algorithm;
-        drawManager[algorithm + "GroupAlgorithm"]();
+        drawManager[drawManager.algorithm + "GroupAlgorithm"]();
         if (!this.isChangingNow) this.activeGroup.startUpdate();
     }
     setName(name){
         this.name=makeBigFirstLetter(name);
         $("header h1").text(this.name);
+        this.wasNameChanged=true;
+    }
+    setWidth(w){
+        this.width=+w;
+        drawManager.deviceDomWidth=this.width*document.documentElement.clientWidth;
     }
 
-}
-
-
-class Theme {
-    constructor() {
-        this.name = "normal";
-        this.allLines = 2;
-        this.algorithm = "simple";
-        this.rules = null;
-    }
 }
 
 class DrawManager {
@@ -1213,12 +1264,12 @@ class DrawManager {
         this.device = device;
         this.secondDevice=null;
         this.themes = [];
-        this.themes.push(new Theme());
         this.activeTheme = this.themes[0];
         this.deviceDomWidth = null;
         this.bodyDom=null;
         this.dialogManager=null;
         this.wasDroppedAction=false;
+        this.algorithm=null;
     }
 
     draw() {
@@ -1231,7 +1282,6 @@ class DrawManager {
         dialogContainerDom.find(".dialog").append(closeDom);
         dialogContainerDom.hide();
         this.bodyDom.append(dialogContainerDom);
-        this.bodyDom.addClass(drawManager.activeTheme.name+"-theme");
         this.bodyDom.append($("<header></header>"));
         this.bodyDom.append($("<section class='container'></section>"));
         this.bodyDom.append($("<footer></footer>"));
@@ -1251,7 +1301,7 @@ class DrawManager {
                         newDevice.changeManager.typeOfChanging = "inProcess";
                         drawManager.secondDevice=newDevice;
                         $("section.container").empty();
-                        drawManager[drawManager.activeTheme.algorithm + "Algorithm"]();
+                        drawManager[drawManager.algorithm + "Algorithm"]();
                     })
                 }));
         }
@@ -1281,7 +1331,7 @@ class DrawManager {
                     drawManager.secondDevice = device;
                     dialogManager.hideDialog();
                     $("section.container").empty();
-                    drawManager[drawManager.activeTheme.algorithm + "Algorithm"]();
+                    drawManager[drawManager.algorithm + "Algorithm"]();
                 }));
             });
             dialogManager.showDialog("form");
@@ -1322,12 +1372,6 @@ class DrawManager {
                     }
                 });
             }));
-        let columnAmountDom=$("<div class='edit chooseColumnAmount'><p>Количество столбцов</p></div>");
-        let possibleAmount=Math.floor($(".mainContent").width()/300);
-        for (let i=0;i<possibleAmount;i++){
-            columnAmountDom.append("<div class='numberOfColumn'>"+(i+1)+"</div>");
-        }
-        editContainer.append();
         header.append(editContainer);
         header.append("<h1>"+this.device.name+"</h1>").append(deviceShortcutContainerDom);
         this[this.activeTheme.algorithm + "Algorithm"]();
@@ -1335,9 +1379,9 @@ class DrawManager {
 
     simpleAlgorithm() {
         let self=this;
+        this.deviceDomWidth = this.secondDevice?Math.floor(document.documentElement.clientWidth/2)-4:document.documentElement.clientWidth*this.device.width;
         if (this.device.domElement) this.device.domElement.remove();
         let deviceDom = this.device.draw();
-        this.deviceDomWidth = this.secondDevice?Math.floor(document.documentElement.clientWidth/2)-4:document.documentElement.clientWidth;
         let section = $("section.container");
         let minHeight=section.height();
         deviceDom.css({
@@ -1484,6 +1528,9 @@ class DrawManager {
             else {
                 let actionGroupDom = activeGroup.draw();
                 let currentLevelGroupDom = actionGroupDom.find(".currentLevelGroup");
+                $(".device").css({
+                    "width":containerWidth
+                });
                 if (currentLevelGroupDom.length > 0) {
                     containerWidth -= 202;
                 }
@@ -1492,7 +1539,7 @@ class DrawManager {
                     "min-height": $("section.container").height() + "px"
                 });
                 if (activeGroup.actions.size > 0) {
-                    let actionWidth = Math.floor(containerWidth / self.activeTheme.allLines) - self.activeTheme.allLines * 15;
+                    let actionWidth = Math.floor(containerWidth / activeGroup.allLines) - activeGroup.allLines * 15;
                     for (let action of activeGroup.actions.values()) {
                         action.domElement.get(activeGroup.id).css({
                             "flex-basis": actionWidth + "px"
@@ -1521,6 +1568,12 @@ class DrawManager {
             let actionGroupDom = activeGroup.draw();
             let mainContentDom=actionGroupDom.find(".mainContent");
             let height=activeGroup.device.isSecond?$("section.container").height()-40:$("section.container").height();
+            if (!drawManager.secondDevice){
+                containerWidth=containerWidth*activeGroup.width;
+                $(".device").css({
+                    "width":containerWidth
+                });
+            }
             mainContentDom.css({
                 "min-height": height + "px"
             });
@@ -1582,7 +1635,7 @@ class DrawManager {
                 else contentDom.text(content);
             },
             showDialog:function (type) {
-                drawManager[drawManager.activeTheme.algorithm+"ShowDialog"](type);
+                drawManager[drawManager.algorithm+"ShowDialog"](type);
             },
             hideDialog:function () {
                 this.setHeader();
@@ -1604,7 +1657,8 @@ class DrawManager {
 var dataJson;
 var drawManager;
 function startDevice() {
-    drawManager = new DrawManager(new Device(JSON.parse(dataJson)));
+    let data=JSON.parse(dataJson);
+    drawManager = new DrawManager(new Device(data.device));
     drawManager.draw();
 }
 

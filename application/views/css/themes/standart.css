@@ -2,36 +2,36 @@ body.normal-theme{
     background: rgba(192, 51, 28, 1);
     color: white;
 }
-.normal-theme header{
+header{
     padding-top: 1px;
     border-bottom: 2px solid white;;
 }
-.normal-theme body{
+body{
     overflow: scroll;
 }
-.normal-theme h1{
+h1{
     margin-top: 20px;
     text-align: center;
     color: white;
 }
-.normal-theme section {
+section {
     min-height: calc(100vh - 140px);
 }
-.normal-theme footer{
+footer{
     border-top: 2px solid white;
     height: 50px;
 }
-.normal-theme h2,h3{
+h2,h3{
     text-align:center;
 }
-.normal-theme .clearFix:after {
+.clearFix:after {
     content: ".";
     display: block;
     clear: both;
     visibility:hidden;
     height: 0;
 }
-.normal-theme .device{
+.device{
 margin-left: auto;
 margin-right: auto;
 border-left: 1px solid white;
@@ -39,13 +39,13 @@ border-right: 1px solid white;
 color: white;
 font-size: 20px;
 }
-.normal-theme .deviceShortcutContainer{
+.deviceShortcutContainer{
     border-right: 1px solid white;
     border-left: 1px solid white;
     border-top: 1px solid white;
     padding: 10px 0;
 }
-.normal-theme .deviceShortcut{
+.deviceShortcut{
     color:rgba(192, 51, 28, 1);
     font-size: 30px;
     cursor: pointer;
@@ -55,14 +55,14 @@ font-size: 20px;
     border: 2px solid black;
     padding: 0 10px;
 }
-.normal-theme .deviceShortcutExplanation{
+.deviceShortcutExplanation{
     color: white;
     font-size: 30px;
     text-align: center;
     padding-top: 50px;
     padding-bottom: 50px;
 }
-.normal-theme .dialogContainer{
+.dialogContainer{
 display:flex;
 position:fixed;
 width:100vw;
@@ -74,7 +74,7 @@ left:0;
     font-size: 23px;
     z-index: 1000;
 }
-.normal-theme .dialog{
+.dialog{
 position:relative;
 overflow:auto;
 width:50%;
@@ -85,7 +85,7 @@ padding:15px;
     background:grey;
 }
 
-.normal-theme .dialog .close{
+.dialog .close{
 position:absolute;
 top:0;
 right:0;
@@ -93,41 +93,41 @@ background:red;
 cursor:pointer;
 }
 
-.normal-theme .currentLevelGroup{
+.currentLevelGroup{
     max-width: 200px;
     min-width: 200px;
 }
-.normal-theme .mainContent{
+.mainContent{
     flex-grow: 1;
     min-width: 300px;
 border-left:1px solid white;
 box-sizing:border-box;
 }
-.normal-theme .mainContent .editContainer{
+.mainContent .editContainer{
 display:inline-flex;
 width:50%;
 flex-direction:row-reverse;
 flex-wrap:wrap;
 }
-.normal-theme .mainContent .edit{
+.mainContent .edit{
 padding-left:10px;
 padding-right:10px;
 background:red;
 border:1px solid white;
 cursor:pointer;
 }
-.normal-theme .mainContent .pathContainer{
+.mainContent .pathContainer{
 display:inline-block;
 width:50%;
 }
-.normal-theme .mainContent h2{
+.mainContent h2{
 padding-bottom:10px;
 }
-.normal-theme .mainContent .actionGroupContainer{
+.mainContent .actionGroupContainer{
 display:flex;
 flex-wrap:wrap;
 }
-.normal-theme .mainContent .groupInGroup{
+.mainContent .groupInGroup{
 flex-basis:150px;
 flex-grow:1;
 background:red;
@@ -136,47 +136,47 @@ font-size:30px;
 cursor:pointer;
 border:1px solid white;
 }
-.normal-theme .mainContent .actionContainer{
+.mainContent .actionContainer{
 display:flex;
 flex-wrap:wrap;
 justify-content:space-around;
 border:1px solid black;
 }
-.normal-theme .mainContent .mainAction{
+.mainContent .mainAction{
 flex-grow:1;
 border:1px solid white;
 padding:5px;
 }
-.normal-theme .mainContent .mainAction .value{
+.mainContent .mainAction .value{
 height:30px;
 text-align:center;
 }
-.normal-theme .mainContent .support{
+.mainContent .support{
 display: flex;
 flex-wrap: wrap;
 justify-content: space-around;
 padding: 5px;
 }
-.normal-theme .mainContent .supportAction{
+.mainContent .supportAction{
 border: 1px solid grey;
 padding: 5px;
 box-sizing: border-box;
     flex-grow: 1;
     flex-basis: 250px;
 }
-.normal-theme .actionGroup .groupOnTheLevel{
+.actionGroup .groupOnTheLevel{
 font-size: 30px;
 cursor: pointer;
 text-align: center;
 border-bottom: 1px solid white;
 background: #850000;
 }
-.normal-theme .dialogContainer .block-content{
+.dialogContainer .block-content{
 padding-top:20px;
 display:flex;
 flex-wrap:wrap;
 }
-.normal-theme .dialogContainer .block{
+.dialogContainer .block{
 text-align:center;
 background:red;
 cursor:pointer;
@@ -184,42 +184,42 @@ border:1px solid white;
 padding:5px 10px;
 flex-grow:1;
 }
-.normal-theme .dialogContainer .newGroupActionContainer{
+.dialogContainer .newGroupActionContainer{
 padding-top:20px;
 display:flex;
 flex-wrap:wrap;
 }
-.normal-theme .dialogContainer .newGroupAction{
+.dialogContainer .newGroupAction{
 background:red;
 border:1px solid white;
 flex-grow:1;
 display:flex;
 min-height:25px;
 }
-.normal-theme .dialogContainer .outerName{
+.dialogContainer .outerName{
 flex-grow:1;
 padding:0 10px;
 text-align:center;
 font-size:25px;
 }
-.normal-theme .dialogContainer .form-content input[type=submit]{
+.dialogContainer .form-content input[type=submit]{
 font-size:25px;
 cursor:pointer;
 }
-.normal-theme .dialogContainer .string-content{
+.dialogContainer .string-content{
     padding: 20px;
 }
-.normal-theme .dialogContainer.error{
+.dialogContainer.error{
     background: rgba(215, 11, 0, 0.5);
 }
-.normal-theme .dialogContainer.error .content{
+.dialogContainer.error .content{
     text-align: center;
     padding: 20px;
 }
-.normal-theme .dialogContainer.error h1{
+.dialogContainer.error h1{
     color: red;
 }
-.normal-theme .mainContent .actionAvatar{
+.mainContent .actionAvatar{
     background: rgba(143, 22, 31, 1);
     border: 1px solid whitesmoke;
     padding-bottom: 20px;
@@ -229,14 +229,14 @@ cursor:pointer;
     text-align: center;
 
 }
-.normal-theme .mainContent .actionContainer.sortAction{
+.mainContent .actionContainer.sortAction{
     display: block;
 }
-.normal-theme .mainContent .editContainerAction{
+.mainContent .editContainerAction{
     text-align:right;
     font-size: 20px;
 }
-.normal-theme .mainContent .editContainerAction .editAction{
+.mainContent .editContainerAction .editAction{
     display:inline-block;
     padding-left:10px;
     padding-right:10px;
@@ -244,17 +244,17 @@ cursor:pointer;
     border:1px solid white;
     cursor:pointer;
 }
-.normal-theme h2.secondDeviceName{
+h2.secondDeviceName{
     border-bottom:1px solid white;
     height:40px;
 }
-.normal-theme .actionGroup{
+.actionGroup{
     display: flex;
 }
-.normal-theme .ifSecondDevice{
+.ifSecondDevice{
     display: flex;
 }
-.normal-theme .editDeviceContainer{
+.editDeviceContainer{
     text-align:right;
     font-size: 20px;
     width: 40%;
@@ -262,11 +262,42 @@ cursor:pointer;
     right: 0;
     top:0;
 }
-.normal-theme .editDeviceContainer .edit{
+.editDeviceContainer .edit{
     display:inline-block;
     padding-left:10px;
     padding-right:10px;
     background:red;
     border:1px solid white;
     cursor:pointer;
+}
+.chooseColumnAmount{
+    position: relative;
+}
+.numberContainer{
+    position: absolute;
+    top:100%;
+    display: none;
+    background: #7c0a09;
+    margin-left: -10px;
+    width: 90%;
+    z-index: 100;
+}
+.number{
+    border-top:1px solid white;
+    padding-left: 25%;
+}
+.number:hover{
+    background: #b60d0d;
+}
+.chooseColumnAmount:hover .numberContainer{
+    display: block;
+}
+.equal{
+    background: black;
+}
+.widthChoice{
+    position:relative;
+}
+.widthChoice:hover .numberContainer{
+    display: block;
 }

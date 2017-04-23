@@ -49,9 +49,26 @@ class Model_thing extends Model
             echo $mysqli->error;
             return null;
         }
-        $mysqli->close();
         $data = $data['new_creation_line'] == null ? $data['creation_line'] : $data['new_creation_line'];
-        $resp = '{"creation_line":' . $data . ',"devices":' . $things . '}';
+        $query = "SELECT id,theme_name,is_main FROM themes";
+        if ($res = $mysqli->query($query)) {
+            $themes = json_encode($res->fetch_all(MYSQLI_ASSOC));
+            $res->close();
+        } else {
+            echo $mysqli->error;
+            return null;
+        }
+        $query = "SELECT file_name,algorithm FROM themes WHERE is_main=1";
+        if ($res = $mysqli->query($query)) {
+            $theme_res=$res->fetch_all(MYSQLI_ASSOC)[0];
+            $res->close();
+        } else {
+            echo $mysqli->error;
+            return null;
+        }
+        $mysqli->close();
+        $resp['device'] = '{"creation_line":' . $data . ',"devices":' . $things . ',"themes":'.$themes.',"algorithm":'.$theme_res['algorithm'].'}';
+        $resp['file_name']=$theme_res['file_name'];
         return $resp;
     }
 
@@ -123,7 +140,7 @@ class Model_thing extends Model
         return $devices_with_actions;
     }
 
-    public function upgrade_line($id, $new_line)
+    public function upgrade_line($id, $new_line,$name)
     {
         $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
         if ($mysqli->connect_errno) {
@@ -134,10 +151,19 @@ class Model_thing extends Model
             exit();
         }
         $query = "UPDATE things SET new_creation_line='$new_line' WHERE id=$id";
-        if ($mysqli->query($query)) $ans = "Updated";
-        else $ans = "Something wrong";
+        if (!$mysqli->query($query)) {
+            $mysqli->close();
+            return  "Something wrong";
+        }
+        if (strlen($name)!=0) {
+            $query = "UPDATE things SET thing_name='$name' WHERE id=$id";
+            if (!$mysqli->query($query)) {
+                $mysqli->close();
+                return "Something wrong";
+            }
+        }
         $mysqli->close();
-        return $ans;
+        return "Updated";
     }
 
     public function get_initial_line($id)
@@ -150,8 +176,19 @@ class Model_thing extends Model
             printf("Error loading character set utf8: %s\n", $mysqli->error);
             exit();
         }
+        $query = "SELECT creation_line FROM things WHERE id=$id";
+        if ($res = $mysqli->query($query)) {
+            $creation_line = $res->fetch_all(MYSQLI_ASSOC)[0]['creation_line'];
+            $res->close();
+        } else {
+            echo $mysqli->error;
+            return null;
+        }
+        $device=json_decode($creation_line,true);
+        $query = "UPDATE things SET thing_name='$device[name]' WHERE id=$id";
+        if (!$mysqli->query($query)) echo "Something wrong in model_thing->get_initial_line Error:".$mysqli->error;;
         $query = "UPDATE things SET new_creation_line=null WHERE id=$id";
-        if (!$mysqli->query($query)) echo "Something wrong in model_thing->get_initial_line";
+        if (!$mysqli->query($query)) echo "Something wrong in model_thing->get_initial_line 2";
         $mysqli->close();
         return $this->get_action($id);
     }
@@ -252,10 +289,11 @@ class Model_thing extends Model
     {
         // TODO: Implement post() method.
         $new_line = $_POST['newLine'];
+        $name=isset($_POST['newName'])?$_POST['newName']:"";
         if ($new_line == "reset") {
             return $this->get_initial_line($param);
         } else {
-            return $this->upgrade_line($param, $new_line);
+            return $this->upgrade_line($param, $new_line,$name);
         }
     }
 
