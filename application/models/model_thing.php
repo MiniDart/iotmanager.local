@@ -67,7 +67,7 @@ class Model_thing extends Model
             return null;
         }
         $mysqli->close();
-        $resp['device'] = '{"creation_line":' . $data . ',"devices":' . $things . ',"themes":'.$themes.',"algorithm":'.$theme_res['algorithm'].'}';
+        $resp['device'] = '{"creation_line":' . $data . ',"devices":' . $things . ',"themes":'.$themes.',"algorithm":"'.$theme_res['algorithm'].'"}';
         $resp['file_name']=$theme_res['file_name'];
         return $resp;
     }

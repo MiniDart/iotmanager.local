@@ -1263,13 +1263,13 @@ class DrawManager {
     constructor(device) {
         this.device = device;
         this.secondDevice=null;
-        this.themes = [];
-        this.activeTheme = this.themes[0];
+        this.themes = null;
         this.deviceDomWidth = null;
         this.bodyDom=null;
         this.dialogManager=null;
         this.wasDroppedAction=false;
         this.algorithm=null;
+        this.devices=null;
     }
 
     draw() {
@@ -1286,7 +1286,7 @@ class DrawManager {
         this.bodyDom.append($("<section class='container'></section>"));
         this.bodyDom.append($("<footer></footer>"));
         let deviceShortcutContainerDom=$("<div class='deviceShortcutContainer'></div>");
-        for (let device of this.device.devices){
+        for (let device of this.devices){
             if (device.id==this.device.id) continue;
             let cls=device.is_virtual==0?"deviceShortcut real":"deviceShortcut";
             deviceShortcutContainerDom.append($("<a class='"+cls+"' id='deviceShortcut_"+device.id+"' " +
@@ -1337,7 +1337,7 @@ class DrawManager {
             dialogManager.showDialog("form");
 
         }));
-        if (this.device.devices.length==1) deviceShortcutContainerDom.css({
+        if (this.devices.length==1) deviceShortcutContainerDom.css({
             "padding":0
         });
         let header=this.bodyDom.find("header");
@@ -1374,7 +1374,7 @@ class DrawManager {
             }));
         header.append(editContainer);
         header.append("<h1>"+this.device.name+"</h1>").append(deviceShortcutContainerDom);
-        this[this.activeTheme.algorithm + "Algorithm"]();
+        this[this.algorithm + "Algorithm"]();
     }
 
     simpleAlgorithm() {
@@ -1540,6 +1540,7 @@ class DrawManager {
                 });
                 if (activeGroup.actions.size > 0) {
                     let actionWidth = Math.floor(containerWidth / activeGroup.allLines) - activeGroup.allLines * 15;
+                    if (actionWidth<300) actionWidth=300;
                     for (let action of activeGroup.actions.values()) {
                         action.domElement.get(activeGroup.id).css({
                             "flex-basis": actionWidth + "px"
@@ -1561,7 +1562,7 @@ class DrawManager {
                 for (let supportAction of action.supportActions.values()) {
                     if (supportAction.active == null) activeSupportActions.push(supportAction);
                 }
-                self[self.activeTheme.algorithm + "SupportAlgorithm"](activeSupportActions);
+                self[self.algorithm + "SupportAlgorithm"](activeSupportActions);
             }
         }
         function show(activeGroup) {
@@ -1657,8 +1658,12 @@ class DrawManager {
 var dataJson;
 var drawManager;
 function startDevice() {
+    console.log(dataJson);
     let data=JSON.parse(dataJson);
-    drawManager = new DrawManager(new Device(data.device));
+    drawManager = new DrawManager(new Device(data.creation_line));
+    drawManager.algorithm=data.algorithm;
+    drawManager.themes=data.themes;
+    drawManager.devices=data.devices;
     drawManager.draw();
 }
 
