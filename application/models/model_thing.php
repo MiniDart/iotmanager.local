@@ -58,7 +58,7 @@ class Model_thing extends Model
             echo $mysqli->error;
             return null;
         }
-        $query = "SELECT file_name,algorithm FROM themes WHERE is_main=1";
+        $query = "SELECT file_name,algorithm,width_to_deduct FROM themes WHERE is_main=1";
         if ($res = $mysqli->query($query)) {
             $theme_res=$res->fetch_all(MYSQLI_ASSOC)[0];
             $res->close();
@@ -67,7 +67,7 @@ class Model_thing extends Model
             return null;
         }
         $mysqli->close();
-        $resp['device'] = '{"creation_line":' . $data . ',"devices":' . $things . ',"themes":'.$themes.',"algorithm":"'.$theme_res['algorithm'].'"}';
+        $resp['device'] = '{"creation_line":' . $data . ',"devices":' . $things . ',"themes":'.$themes.',"current_theme":'.json_encode($theme_res).'}';
         $resp['file_name']=$theme_res['file_name'];
         return $resp;
     }

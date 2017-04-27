@@ -34,8 +34,11 @@ class Controller_thing extends Controller
     }
     function get($param){
         $data=$this->model->get($param);
-        if (stripos($param, "-value")||stripos($param,"-string")){
+        if (stripos($param, "-value")){
             $this->view->generate("actionsdata_view.php","empty_view.php",$data);
+        }
+        else if(stripos($param,"-string")){
+            $this->view->generate("second_device_view.php","empty_view.php",$data);
         }
         else {
             $this->view->generate("thing_view.php", "template_thing_view.php", $data);
