@@ -557,7 +557,7 @@ class ActionGroup {
             self.device.isChangingAppearance=true;
             self.device.showNewGroup(self.id);
         }));
-        let columnAmountDom=$("<div class='edit appearance chooseColumnAmount'>Количество столбцов</div>");
+        let columnAmountDom=$("<div class='edit appearance chooseColumnAmount outerOfNumber'>Количество столбцов</div>");
         let numberContainerDom=$("<div class='numberContainer'></div>");
         let possibleAmount=Math.floor((drawManager.deviceDomWidth-(self.owner.actionGroups.size>1?drawManager.widthToDeduct:0))/300);
         for (let i=0;i<possibleAmount;i++){
@@ -570,18 +570,6 @@ class ActionGroup {
             self.device.showNewGroup(null);
         });
         editContainerDom.append(columnAmountDom);
-        let widthChoiceDom=$("<div class='edit appearance widthChoice'>Выберите ширину зоны отображения устройства</div>");
-        let widthContainer=$("<div class='numberContainer'></div>");
-        for (let p of [100,75,50]){
-            widthContainer.append("<div class='number"+(p/100==this.device.width?" equal":"")+"' data-width='"+p/100+"'>"+p+"%</div>");
-        }
-        widthChoiceDom.append(widthContainer);
-        widthChoiceDom.on("click",".number",function (e) {
-            let width=$(this).attr("data-width");
-            self.device.setWidth(width);
-            self.device.showNewGroup(null);
-        });
-        editContainerDom.append(widthChoiceDom);
         editContainerDom.append($("<div class='edit cut active' id='cut" + this.id + "'>Вырезать</div>").on("click", function (e) {
             if (self.owner.actionGroups.size == 1 && self.owner.id == -1) {
                 alert("Error: You can't cut this group.");
@@ -821,7 +809,7 @@ class ActionGroup {
                             group.domElement = null;
                         }
                         self.device.showNewGroup(self.id);
-                        dataJson = '{"devices":' + JSON.stringify(drawManager.devices) + ',"current_theme":"'+JSON.stringify(drawManager.currentTheme)+'",' +
+                        dataJson = '{"devices":' + JSON.stringify(drawManager.devices) + ',"current_theme":'+JSON.stringify(drawManager.currentTheme)+',' +
                             '"themes":'+JSON.stringify(drawManager.themes)+',';
                         dataJson += '"creation_line":' + json_dev + '}';
                     }
@@ -1069,13 +1057,14 @@ class ActionGroup {
             this.domElement.find(".editContainer .appearance").show();
             this.domElement.find(".editContainer .save").show();
             this.domElement.find(".editContainer .cancel").show();
+            $("header .deviceAppearance").show();
         }
         else if (this.device.isChangingNow) {
             this.domElement.find(".editContainer .edit").hide();
             this.domElement.find(".editContainerAction").hide();
             deviceShortcutContainerDom.find(".createDevice").hide();
             if (!self.device.isSecond) {
-                $("header .editDeviceContainer").show();
+                $("header .deviceStructure").show();
                 deviceShortcutContainerDom.find(".createDevice").show();
                 if (!self.device.isVirtual){
                     deviceShortcutContainerDom.find(".real").hide();
@@ -1224,6 +1213,7 @@ getGroupId(){
     }
 
     showNewGroup(id) {
+        this.activeGroup.stopUpdate();
         if (this.isSecond){
             if (this.activeGroup&&this.activeGroup.domElement) this.activeGroup.domElement.remove();
             this.activeGroup = this.actionGroups.get(+id);
@@ -1240,7 +1230,6 @@ getGroupId(){
         }
         if (id!=null) {
             if (this.activeGroup) {
-                this.activeGroup.stopUpdate();
                 if (this.activeGroup.domElement) this.activeGroup.domElement.detach();
             }
             this.activeGroup = this.actionGroups.get(+id);
@@ -1276,6 +1265,7 @@ class DrawManager {
     }
 
     draw() {
+        let self=this;
         this.bodyDom=$("body");
         let dialogContainerDom=$("<div class='dialogContainer'><div class='dialog'><h1></h1><div class='content'></div></div></div>");
         let closeDom=$("<div class='close'>X</div>");
@@ -1376,7 +1366,40 @@ class DrawManager {
                 });
             }));
         header.append(editContainer);
-        let editAppearanceContainer=$("");
+        let editAppearanceContainer=$("<div class='editDeviceContainer deviceAppearance'></div>");
+        let widthChoiceDom=$("<div class='edit appearance widthChoice outerOfNumber'>Выберите ширину зоны отображения устройства</div>");
+        let widthContainer=$("<div class='numberContainer'></div>");
+        for (let p of [100,75,50]){
+            widthContainer.append("<div class='number"+(p/100==this.device.width?" equal":"")+"' data-width='"+p/100+"'>"+p+"%</div>");
+        }
+        widthChoiceDom.append(widthContainer);
+        widthChoiceDom.on("click",".number",function (e) {
+            widthContainer.find(".equal").removeClass("equal");
+            let width=$(this).addClass("equal").attr("data-width");
+            self.device.setWidth(width);
+            self.device.showNewGroup(null);
+        });
+        editAppearanceContainer.append(widthChoiceDom);
+        let themeContainer=$("<div class='numberContainer'></div>");
+        for (let t of this.themes){
+            themeContainer.append("<div class='number"+(t.is_main==1?" equal":"")+"' data-id='"+t.id+"'>"+t.theme_name+"</div>");
+        }
+        themeContainer.on("click",".number",function (e) {
+            let themeId=$(this).attr("data-id");
+            if (themeId==drawManager.currentTheme.id) return;
+            $.ajax({
+                url: "theme",
+                type: 'PUT',
+                success: (data)=>{
+                    if (data=="Updated"){
+                        location.reload();
+                    }
+                },
+                data: {'id': themeId},
+            });
+        });
+        editAppearanceContainer.append($("<div class='edit appearance changeTheme outerOfNumber'>Изменить тему</div>").append(themeContainer));
+        header.append(editAppearanceContainer);
         header.append("<h1>"+this.device.name+"</h1>").append(deviceShortcutContainerDom);
         this[this.algorithm + "Algorithm"]();
     }
@@ -1541,7 +1564,7 @@ class DrawManager {
                     "width":containerWidth
                 });
                 if (currentLevelGroupDom.length > 0) {
-                    containerWidth -= 202;
+                    containerWidth -= this.widthToDeduct;
                 }
                 let mainContentDom = actionGroupDom.find(".mainContent");
                 mainContentDom.css({

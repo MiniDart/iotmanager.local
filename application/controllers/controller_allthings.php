@@ -25,6 +25,8 @@ class Controller_allthings extends Controller
             case "POST":
                 $this->post();
                 break;
+            case "PUT":
+                $this->put($param);
         }
     }
     function get(){
@@ -36,5 +38,9 @@ class Controller_allthings extends Controller
         $result=$this->model->post($data);
         if ($result!=null) echo "Success-".$result;
         else echo " Fail to create thing!!!";
+    }
+    function put($param){
+        $data=$this->model->put($param);
+        echo $data;
     }
 }

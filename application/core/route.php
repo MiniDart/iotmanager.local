@@ -21,13 +21,13 @@ class Route
             if ($routes[1]=="creatething"){
                 $controller_name=$routes[1];
             }
+            elseif ($routes[1]=="theme"){
+                $param=$routes[1];
+            }
             else {
                 $controller_name = "thing";
                 $param = $routes[1];
             }
-        }
-        if (!empty($routes[2])){
-            
         }
         $model_name = 'Model_'.$controller_name;
         $controller_name = 'Controller_'.$controller_name;

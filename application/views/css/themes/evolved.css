@@ -1,5 +1,5 @@
 body{
-    background: rgba(192, 51, 28, 1);
+    background: #4c4c4c;
     color: white;
     overflow: scroll;
 }
@@ -23,12 +23,12 @@ h2,h3{
     text-align:center;
 }
 .device{
-margin-left: auto;
-margin-right: auto;
-border-left: 1px solid white;
-border-right: 1px solid white;
-color: white;
-font-size: 20px;
+    margin-left: auto;
+    margin-right: auto;
+    border-left: 1px solid white;
+    border-right: 1px solid white;
+    color: white;
+    font-size: 20px;
 }
 .deviceShortcutContainer{
     border-right: 1px solid white;
@@ -54,148 +54,170 @@ font-size: 20px;
     padding-bottom: 50px;
 }
 .dialogContainer{
-display:flex;
-position:fixed;
-width:100vw;
-height:100vh;
-background:rgba(58, 58, 58, 0.46);
-top:0;
-left:0;
+    display:flex;
+    position:fixed;
+    width:100vw;
+    height:100vh;
+    background:rgba(58, 58, 58, 0.46);
+    top:0;
+    left:0;
     color: white;
     font-size: 23px;
     z-index: 1000;
 }
 .dialog{
-position:relative;
-overflow:auto;
-width:50%;
-min-height:40%;
-max-height:80%;
-margin: auto;
-padding:15px;
+    position:relative;
+    overflow:auto;
+    width:50%;
+    min-height:40%;
+    max-height:80%;
+    margin: auto;
+    padding:15px;
     background:grey;
 }
 
 .dialog .close{
-position:absolute;
-top:0;
-right:0;
-background:red;
-cursor:pointer;
+    position:absolute;
+    top:0;
+    right:0;
+    background:red;
+    cursor:pointer;
 }
 
 .currentLevelGroup{
-    max-width: 200px;
-    min-width: 200px;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100vw;
+    display: flex;
+    min-height: 50px;
+    background:#302f38;
+    justify-content:center;
+    align-items:center;
+
 }
 .mainContent{
     flex-grow: 1;
     min-width: 300px;
-border-left:1px solid white;
-box-sizing:border-box;
+    border-left:1px solid white;
+    box-sizing:border-box;
 }
 .mainContent .editContainer{
-display:inline-flex;
-width:50%;
-flex-direction:row-reverse;
-flex-wrap:wrap;
+    display:inline-flex;
+    width:50%;
+    flex-direction:row-reverse;
+    flex-wrap:wrap;
 }
-.mainContent .edit{
-padding-left:10px;
-padding-right:10px;
-background:red;
-border:1px solid white;
-cursor:pointer;
+.edit{
+    padding-left:10px;
+    padding-right:10px;
+    border: 1px solid white;
+    cursor:pointer;
+}
+.edit:hover{
+    background: #2b2b2b;
 }
 .mainContent .pathContainer{
-display:inline-block;
-width:50%;
+    display:inline-block;
+    width:50%;
 }
 .mainContent h2{
-padding-bottom:10px;
+    padding-bottom:10px;
 }
 .mainContent .actionGroupContainer{
-display:flex;
-flex-wrap:wrap;
+    display:flex;
+    flex-wrap:wrap;
+    border: 1px solid white;
+    min-height: 50px;
 }
 .mainContent .groupInGroup{
-flex-basis:150px;
-flex-grow:1;
-background:red;
-text-align:center;
-font-size:30px;
-cursor:pointer;
-border:1px solid white;
+    padding: 5px 10px;
+    background:#502c2c;
+    text-align:center;
+    font-size:30px;
+    cursor:pointer;
+    margin: 5px;
 }
 .mainContent .actionContainer{
-display:flex;
-flex-wrap:wrap;
-justify-content:space-around;
-border:1px solid black;
+    display:flex;
+    flex-wrap:wrap;
+    justify-content:space-around;
+    border:1px solid black;
 }
 .mainContent .mainAction{
-flex-grow:1;
-border:1px solid white;
-padding:5px;
+    flex-grow:1;
+    border:1px solid white;
+    padding:5px;
+}
+.mainContent .mainAction:nth-child(3n+1){
+  background: darkred;
+}
+.mainContent .mainAction:nth-child(3n+2){
+    background: darkorange;
+}
+.mainContent .mainAction:nth-child(3n+3){
+    background: darkblue;
 }
 .mainContent .mainAction .value{
-height:30px;
-text-align:center;
+    font-size: 30px;
+    text-align:center;
+    font-weight: 900;
 }
 .mainContent .support{
-display: flex;
-flex-wrap: wrap;
-justify-content: space-around;
-padding: 5px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    padding: 5px;
 }
 .mainContent .supportAction{
-border: 1px solid grey;
-padding: 5px;
-box-sizing: border-box;
+    border: 1px solid grey;
+    padding: 5px;
+    box-sizing: border-box;
     flex-grow: 1;
     flex-basis: 250px;
 }
 .actionGroup .groupOnTheLevel{
-font-size: 30px;
-cursor: pointer;
-text-align: center;
-border-bottom: 1px solid white;
-background: #850000;
+    font-size: 30px;
+    cursor: pointer;
+    text-align: center;
+    padding: 5px 10px;
+    margin:5px;
+    background: #850000;
 }
 .dialogContainer .block-content{
-padding-top:20px;
-display:flex;
-flex-wrap:wrap;
+    padding-top:20px;
+    display:flex;
+    flex-wrap:wrap;
 }
 .dialogContainer .block{
-text-align:center;
-background:red;
-cursor:pointer;
-border:1px solid white;
-padding:5px 10px;
-flex-grow:1;
+    text-align:center;
+    background:red;
+    cursor:pointer;
+    border:1px solid white;
+    padding:5px 10px;
+    flex-grow:1;
 }
 .dialogContainer .newGroupActionContainer{
-padding-top:20px;
-display:flex;
-flex-wrap:wrap;
+    padding-top:20px;
+    display:flex;
+    flex-wrap:wrap;
 }
 .dialogContainer .newGroupAction{
-background:red;
-border:1px solid white;
-flex-grow:1;
-display:flex;
-min-height:25px;
+    background:red;
+    border:1px solid white;
+    flex-grow:1;
+    display:flex;
+    min-height:25px;
 }
 .dialogContainer .outerName{
-flex-grow:1;
-padding:0 10px;
-text-align:center;
-font-size:25px;
+    flex-grow:1;
+    padding:0 10px;
+    text-align:center;
+    font-size:25px;
 }
 .dialogContainer .form-content input[type=submit]{
-font-size:25px;
-cursor:pointer;
+    font-size:25px;
+    cursor:pointer;
 }
 .dialogContainer .string-content{
     padding: 20px;
@@ -239,9 +261,6 @@ h2.secondDeviceName{
     border-bottom:1px solid white;
     height:40px;
 }
-.actionGroup{
-    display: flex;
-}
 .ifSecondDevice{
     display: flex;
 }
@@ -255,11 +274,6 @@ h2.secondDeviceName{
 }
 .editDeviceContainer .edit{
     display:inline-block;
-    padding-left:10px;
-    padding-right:10px;
-    background:red;
-    border:1px solid white;
-    cursor:pointer;
 }
 .numberContainer{
     position: absolute;
@@ -291,7 +305,10 @@ h2.secondDeviceName{
     right: 0;
 
 }
-.changeTheme .number{
+.changeTheme .number {
     padding: 5px;
+    text-align: left;
+}
+.widthChoice .number{
     text-align: left;
 }

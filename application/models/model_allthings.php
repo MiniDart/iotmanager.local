@@ -35,7 +35,31 @@ class Model_allthings extends Model
 
     public function put($param = null)
     {
-        // TODO: Implement put() method.
+        if ($param=="theme"){
+            $id=+substr(file_get_contents('php://input'),3);
+            $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
+            if ($mysqli->connect_errno) {
+                die("Не удалось подключиться к MySQL");
+            }
+            if (!$mysqli->set_charset("utf8")) {
+                printf("Error loading character set utf8: %s\n", $mysqli->error);
+                exit();
+            }
+            $query = "UPDATE themes SET is_main=0 WHERE is_main=1";
+            if (!$res = $mysqli->query($query)) {
+                echo $mysqli->error;
+                $mysqli->close();
+                return null;
+            }
+            $query = "UPDATE themes SET is_main=1 WHERE id=$id";
+            if (!$res = $mysqli->query($query)) {
+                echo $mysqli->error;
+                $mysqli->close();
+                return null;
+            }
+            $mysqli->close();
+            return "Updated";
+        }
     }
 
     public function post($param = null)

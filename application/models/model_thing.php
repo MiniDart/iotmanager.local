@@ -58,7 +58,7 @@ class Model_thing extends Model
             echo $mysqli->error;
             return null;
         }
-        $query = "SELECT file_name,algorithm,width_to_deduct FROM themes WHERE is_main=1";
+        $query = "SELECT id,file_name,algorithm,width_to_deduct FROM themes WHERE is_main=1";
         if ($res = $mysqli->query($query)) {
             $theme_res=$res->fetch_all(MYSQLI_ASSOC)[0];
             $res->close();
@@ -205,7 +205,7 @@ class Model_thing extends Model
             printf("Error loading character set utf8: %s\n", $mysqli->error);
             exit();
         }
-        $data = $data = file_get_contents('php://input');
+        $data = file_get_contents('php://input');
         $actions_json = urldecode(substr($data, 8));
         $actions = json_decode($actions_json, true);
         $actions_count = count($actions);
