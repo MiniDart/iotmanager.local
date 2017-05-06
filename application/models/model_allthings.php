@@ -65,6 +65,7 @@ class Model_allthings extends Model
     public function post($param = null)
     {
         // TODO: Implement post() method.
+        $param=$_POST['new_thing'];
         if ($param==null) die("There is no file!");
         // TODO: Implement set_data() method.
         $creation_line=$param;
@@ -79,20 +80,19 @@ class Model_allthings extends Model
         }
         $is_virtual=isset($file["isVirtual"])?$file["isVirtual"]:false;
         if ($is_virtual){
-            $query="INSERT INTO things(thing_name,thing_group,update_time,is_virtual) VALUES ('$file[name]','$file[thingGroup]',$file[updateTime],'$is_virtual')";
+            $query="INSERT INTO things(thing_name,thing_group,is_virtual) VALUES ('$file[name]','$file[thingGroup]','$is_virtual')";
             $res=$mysqli->query($query);
             if (!$res) echo $mysqli->error;
             $this->thing_id=$mysqli->insert_id;
             $file['id']=$this->thing_id;
             $creation_line=json_encode($file,JSON_UNESCAPED_UNICODE);
-            echo $creation_line;
             $res=$mysqli->query("UPDATE things SET creation_line='$creation_line' WHERE id=$this->thing_id");
             if (!$res) echo $mysqli->error;
             $mysqli->close();
-            return $this->thing_id;
+            return "Success-".$this->thing_id;
         }
         $uri=$mysqli->real_escape_string($file['uri']);
-        $query="SELECT COUNT(*) FROM things WHERE uri='$uri'";
+        $query="SELECT id FROM things WHERE uri='$uri'";
         if ($res=$mysqli->query($query)){
             $data=$res->fetch_all();
             $res->close();
@@ -100,24 +100,28 @@ class Model_allthings extends Model
         else {
             echo $mysqli->error;
             echo "Can't get results from database in model_newthings";
-            return null;
-        }
-        if ($data[0][0]!=="0"){
-            echo "Thing already exist!";
             $mysqli->close();
             return null;
         }
-        $res=$mysqli->query("INSERT INTO things(uri,thing_name,thing_group,update_time,is_virtual) VALUES ('$uri','$file[name]','$file[thingGroup]',$file[updateTime],'$is_virtual')");
+        if (count($data)!=0){
+            $mysqli->close();
+            return "Exist! id=".$data[0][0];
+        }
+        $is_have_client=isset($file['isHaveClient'])?$file['isHaveClient']:false;
+        $res=$mysqli->query("INSERT INTO things(uri,thing_name,thing_group,update_time,is_virtual,is_have_client) VALUES
+        ('$uri','$file[name]','$file[thingGroup]',$file[updateTime],'$is_virtual','$is_have_client')");
         if (!$res) echo $mysqli->error;
         $this->thing_id=$mysqli->insert_id;
         unset($file['uri']);
+        unset($file['updateTime']);
+        if (isset($file['isHaveClient'])) unset($file['isHaveClient']);
         $file['id']=$this->thing_id;
         $this->insertActionsIntoTable($file['actionGroups'], $mysqli);
         $creation_line=json_encode($file,JSON_UNESCAPED_UNICODE);
         $res=$mysqli->query("UPDATE things SET creation_line='$creation_line' WHERE id=$this->thing_id");
         if (!$res) echo $mysqli->error;
         $mysqli->close();
-        return "Success";
+        return "Success! id=".$this->thing_id;
     }
 
     public function delete($param = null)
@@ -139,26 +143,37 @@ class Model_allthings extends Model
                     $submit_name = null;
                     if (isset($action['submitName'])) $submit_name = $action['submitName'];
                     $action_uri=$mysqli->real_escape_string($action['uri']);
-                    $query = "INSERT INTO actions_description(uri,thing_id,action_name,format,is_changeable,description,submit_name,is_supported,is_need_statistics) VALUES ('$action_uri',$this->thing_id,'$action[name]','$action[format]','$action[isChangeable]','$action_description','$submit_name','$is_supported','$action[isNeedStatistics]')";
+                    $query = "INSERT INTO actions_description(uri,thing_id,action_name,format,is_changeable,description,
+                    submit_name,is_supported) VALUES ('$action_uri',$this->thing_id,'$action[name]','$action[format]',
+                    '$action[isChangeable]','$action_description','$submit_name','$is_supported')";
                     if (!$mysqli->query($query)) {
                         echo $mysqli->error;
+                        $mysqli->close();
                         return null;
                     }
                     unset($action['uri']);
                     $action['id']=$mysqli->insert_id;
                     $action_id = $action['id'];
+                    $time=time();
+                    $query = "INSERT INTO current_data(id,date_value) VALUES ($action[id],$time)";
+                    if (!$mysqli->query($query)) {
+                        echo $mysqli->error;
+                        $mysqli->close();
+                        return null;
+                    }
                     $action_range =& $action['range'];
                     $action_range_count = count($action_range);
                     for ($m = 0; $m < $action_range_count; $m++) {
                         $item =& $action_range[$m];
                         $range_from = isset($item['from']) ? $item['from'] : null;
                         $range_to = isset($item['to']) ? $item['to'] : null;
-                        $color = isset($item['color']) ? $item['color'] : null;
                         $item_name = null;
                         if (isset($item['name'])) $item_name = $item['name'];
-                        $query = "INSERT INTO action_range(action_id,item_name,range_from,range_to,color) VALUES ($action_id,'$item_name','$range_from','$range_to','$color')";
+                        $query = "INSERT INTO action_range(action_id,item_name,range_from,range_to) VALUES 
+                        ($action_id,'$item_name','$range_from','$range_to')";
                         if (!$mysqli->query($query)) {
                             echo $mysqli->error;
+                            $mysqli->close();
                             return null;
                         }
                         $action_range_id = $mysqli->insert_id;
@@ -169,34 +184,41 @@ class Model_allthings extends Model
                         $support_actions_count = count($support_actions);
                         for ($n = 0; $n < $support_actions_count; $n++) {
                             $support_action =& $support_actions[$n];
-                            if (isset($support_action['isDeactivator'])) $is_disactivator = $support_action['isDeactivator'];
-                            else $is_disactivator = false;
                             $is_individual = $support_action['isIndividual'] == "true" ? true : false;
                             $support_submit_name = null;
                             $support_action_description = isset($support_action['description']) ? $support_action['description'] : null;
                             if (isset($support_action['submitName'])) $support_submit_name = $support_action['submitName'];
                             $support_active = isset($support_action['active']) ? $support_action['active'] : null;
                             $support_action_uri=$mysqli->real_escape_string($support_action['uri']);
-                            $query = "INSERT INTO actions_description(uri,action_owner_id,action_name,is_changeable,format,description,submit_name,is_need_statistics,thing_id,is_individual,is_deactivator,active) VALUES ('$support_action_uri',$action_id,'$support_action[name]','$support_action[isChangeable]','$support_action[format]','$support_action_description','$support_submit_name','$support_action[isNeedStatistics]',$this->thing_id,'$is_individual','$is_disactivator','$support_active')";
+                            $query = "INSERT INTO actions_description(uri,action_owner_id,action_name,is_changeable,format,
+                            description,submit_name,thing_id,is_individual,active) VALUES ('$support_action_uri',
+                            $action_id,'$support_action[name]','$support_action[isChangeable]','$support_action[format]',
+                            '$support_action_description','$support_submit_name',$this->thing_id,'$is_individual',
+                            '$support_active')";
                             if (!$mysqli->query($query)) {
                                 echo $mysqli->error . ", ";
+                                $mysqli->close();
                                 return null;
                             }
                             unset($support_action['uri']);
                             $support_action['id']=$mysqli->insert_id;
                             $support_action_id = $support_action['id'];
+                            $time=time();
+                            $query = "INSERT INTO current_data(id,date_value) VALUES ($support_action[id],$time)";
+                            if (!$mysqli->query($query)) {
+                                echo $mysqli->error;
+                                $mysqli->close();
+                                return null;
+                            }
                             $support_action_range =& $support_action['range'];
                             $support_action_range_count = count($support_action_range);
                             for ($k = 0; $k < $support_action_range_count; $k++) {
                                 $support_item =& $support_action_range[$k];
-                                $color = isset($support_item['color']) ? $support_item['color'] : null;
-                                $disactivate = isset($support_item['isDeactivator']) ? $support_item['isDeactivator'] : null;
-                                $explanation = isset($support_item['explanation']) ? $support_item['explanation'] : null;
                                 $range_from = isset($support_item['from']) ? $support_item['from'] : null;
                                 $range_to = isset($support_item['to']) ? $support_item['to'] : null;
                                 $support_item_name = null;
                                 if (isset($support_item['name'])) $support_item_name = $support_item['name'];
-                                $query = "INSERT INTO action_range(action_id,item_name,range_from,range_to,is_deactivator,color,explanation) VALUES ('$support_action_id','$support_item_name','$range_from','$range_to','$disactivate','$color','$explanation')";
+                                $query = "INSERT INTO action_range(action_id,item_name,range_from,range_to) VALUES ('$support_action_id','$support_item_name','$range_from','$range_to')";
                                 $mysqli->query($query);
                                 $support_action_range_id = $mysqli->insert_id;
                                 $support_item['id'] = $support_action_range_id;

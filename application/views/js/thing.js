@@ -74,17 +74,15 @@ function fillActionGroups(actionGroupsIn,actionGroupsOut,deviceFrom) {
                     actionOut.isChangeable = actionIn.isChangeable;
                     actionOut.format = actionIn.format;
                     if (actionIn.description) actionOut.description = actionIn.description;
-                    actionOut.isNeedStatistics = actionIn.isNeedStatistics;
                     if (actionIn.submitName) actionOut.submitName = actionIn.submitName;
                     if (actionIn.range) {
                         actionOut.range = [];
                         for (let itemIn of actionIn.range.values()) {
                             let itemOut = {};
                             itemOut.id = itemIn.id;
-                            if (itemIn.color) itemOut.color = itemIn.color;
                             if (itemIn.name) itemOut.name = itemIn.name;
-                            if (itemIn.from != null) itemOut.from = itemIn.from + "";
-                            if (itemIn.to != null) itemOut.to = itemIn.to + "";
+                            if (itemIn.from) itemOut.from = itemIn.from + "";
+                            if (itemIn.to) itemOut.to = itemIn.to + "";
                             actionOut.range.push(itemOut);
                         }
                     }
@@ -96,9 +94,7 @@ function fillActionGroups(actionGroupsIn,actionGroupsOut,deviceFrom) {
                             supportActionOut.name = supportActionIn.name;
                             supportActionOut.isChangeable = supportActionIn.isChangeable;
                             supportActionOut.format = supportActionIn.format;
-                            if (supportActionIn.isDeactivator) supportActionOut.isDeactivator = supportActionIn.isDeactivator;
                             supportActionOut.isIndividual = supportActionIn.isIndividual;
-                            supportActionOut.isNeedStatistics = supportActionIn.isNeedStatistics;
                             if (supportActionIn.description) supportActionOut.description = supportActionIn.description;
                             if (supportActionIn.submitName) supportActionOut.submitName = supportActionIn.submitName;
                             if (supportActionIn.active) supportActionOut.active = supportActionIn.active;
@@ -107,10 +103,9 @@ function fillActionGroups(actionGroupsIn,actionGroupsOut,deviceFrom) {
                                 for (let itemIn of supportActionIn.range.values()) {
                                     let itemOut = {};
                                     itemOut.id = itemIn.id;
-                                    if (itemIn.color) itemOut.color = itemIn.color;
                                     if (itemIn.name) itemOut.name = itemIn.name;
-                                    if (itemIn.from != null) itemOut.from = itemIn.from + "";
-                                    if (itemIn.to != null) itemOut.to = itemIn.to + "";
+                                    if (itemIn.from) itemOut.from = itemIn.from + "";
+                                    if (itemIn.to) itemOut.to = itemIn.to + "";
                                     supportActionOut.range.push(itemOut);
                                 }
                             }
@@ -132,8 +127,6 @@ function fillActionGroups(actionGroupsIn,actionGroupsOut,deviceFrom) {
 class Item {
     constructor(data, owner) {
         this.owner = owner;
-        if ("color" in data) this.color = data.color;
-        else this.color = null;
         this.id = +data.id;
         this.format = owner.format;
         switch (this.format) {
@@ -182,16 +175,13 @@ class Item {
     isInRange(val) {
         if (this.format == "number") {
             val = +val;
-            if (!from) {
-                if (val > to) return false;
-                else return true;
+            if (!this.from) {
+                return (val < this.to);
             }
-            if (!to) {
-                if (val < from) return false;
-                else return true;
+            if (!this.to) {
+                return (val > this.from);
             }
-            if (val < from || val > to) return false;
-            return true;
+            return (val > this.from && val < this.to);
         }
     }
 }
@@ -205,10 +195,6 @@ class MainItem extends Item {
 class SupportItem extends Item {
     constructor(data, owner) {
         super(data, owner);
-        if ("isDeactivator" in data) this.isDeactivator = data.isDeactivator;
-        else this.isDeactivator = false;
-        if ("description" in data) this.description = data.description;
-        else this.description = null;
     }
 }
 
@@ -220,7 +206,6 @@ class Action {
         this.isChangeable = data.isChangeable;
         this.submitName = null;
         if ("submitName" in data) this.submitName = makeBigFirstLetter(data.submitName);
-        this.isNeedStatistics = data.isNeedStatistics;
         this.id = +data.id;
         device.actions.set(this.id, this);
         this.description = null;
@@ -231,7 +216,7 @@ class Action {
     draw() {
         let actionDom = $("<div><h3>" + this.name + "</h3></div>");
         if (this.description != null) actionDom.append("<div class='description'>" + this.description + "</div>");
-        actionDom.append("<p>Текущее значение:</p><div class='value'></div>");
+        actionDom.append("<div class='valueContainer'><p>Текущее значение:</p><div class='value'></div></div>");
         if (this.isChangeable) {
             let from = null;
             let to = null;
@@ -245,7 +230,7 @@ class Action {
             }
             switch (this.format) {
                 case "number":
-                    actionDom.append("<p>Введите новое значение" + (from || to ? " в диапозоне" : "") + (from ? " от " + from : "") + (to ? " до" + to : "") + ":</p>");
+                    actionDom.append("<p>Введите новое значение" + (from || to ? " в диапозоне" : "") + (from ? " от " + from : "") + (to ? " до " + to : "") + ":</p>");
                     actionDom.append("<input class='newValue' type='text'>");
                     break;
                 case "list":
@@ -280,9 +265,11 @@ class Action {
             }
             let val = +this.domElement.get(this.device.activeGroup.id).find(selector).val();
             if (!item.isInRange(val)) {
+                console.log("no");
                 alert("Error: Write a correct value!");
-                throw new Error("Incorrect value");
+                return;
             }
+            console.log("yes");
             return val;
         }
     }
@@ -293,7 +280,6 @@ class SupportAction extends Action {
     constructor(data, owner, device) {
         super(data, device);
         this.owner=owner;
-        this.isDeactivator = data.isDeactivator;
         this.isIndividual = data.isIndividual;
         this.range = null;
         if ("range" in data) {
@@ -332,7 +318,7 @@ class SupportAction extends Action {
                 }
                 actions.push(supportAction);
                 $.ajax({
-                    url: self.device.id,
+                    url: self.device.id+"-command",
                     type: 'PUT',
                     success: (data)=>{},
                     data: {'newData': JSON.stringify(actions)},
@@ -419,7 +405,7 @@ class MainAction extends Action {
                     }
                 }
                 $.ajax({
-                    url: self.device.id,
+                    url: self.device.id+"-command",
                     type: 'PUT',
                     success: (data)=>{},
                     data: {'newData': JSON.stringify(actions)},
@@ -1104,8 +1090,8 @@ class ActionGroup {
         $.get(this.device.id+"-value", {actions:this.jsonForUpdateActions}, this.insertValuesInActions(),'json');
         this.timerId = setTimeout(function update() {
             $.get(self.device.id+"-value", {actions:self.jsonForUpdateActions}, self.insertValuesInActions(),'json');
-            self.timerId = setTimeout(update, self.device.updateTime);
-        }, self.device.updateTime);
+            self.timerId = setTimeout(update, 2000);
+        }, 2000);
     }
     stopUpdate(){
         if (!this.timerId) return;
@@ -1146,7 +1132,6 @@ class ActionGroup {
         device.name=self.device.name;
         device.isVirtual=self.device.isVirtual;
         device.thingGroup=self.device.thingGroup;
-        device.updateTime=self.device.updateTime/1000;
         device.width=self.device.width;
         device.actionGroups=[];
         fillActionGroups(self.device.actionGroups.get(-1).actionGroups.values(),device.actionGroups);
@@ -1162,7 +1147,6 @@ class Device {
         this.groupId=-2;
         this.name = makeBigFirstLetter(data.name);
         this.thingGroup = data.thingGroup;
-        this.updateTime = (data.updateTime?+data.updateTime:3) * 1000;
         this.actions = new Map();
         this.actionGroups = new Map();
         new ActionGroup({"name":"Корневая группа","actionGroups": data.actionGroups}, null, this);
@@ -1229,10 +1213,12 @@ getGroupId(){
             this.activeGroup.domElement=null;
         }
         if (id!=null) {
-            if (this.activeGroup) {
-                if (this.activeGroup.domElement) this.activeGroup.domElement.detach();
-            }
+            if (this.activeGroup&&this.activeGroup.domElement) this.activeGroup.domElement.detach();
             this.activeGroup = this.actionGroups.get(+id);
+            if (this.isChangingAppearance&&this.activeGroup&&this.activeGroup.domElement){
+                this.activeGroup.domElement.remove();
+                this.activeGroup.domElement=null;
+            }
         }
         drawManager[drawManager.algorithm + "GroupAlgorithm"]();
         if (!this.isChangingNow) this.activeGroup.startUpdate();

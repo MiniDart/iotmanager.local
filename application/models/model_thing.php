@@ -74,26 +74,117 @@ class Model_thing extends Model
 
     private function get_current_data($actions_json)
     {
+        $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
+        if ($mysqli->connect_errno) {
+            die("Не удалось подключиться к MySQL");
+        }
+        if (!$mysqli->set_charset("utf8")) {
+            printf("Error loading character set utf8: %s\n", $mysqli->error);
+            exit();
+        }
         $devices_with_actions = $this->replace_id_with_uri(json_decode($actions_json, true));
         $actions_with_id = array();
-        foreach ($devices_with_actions as $device) {
-            $uri_actions = array_values($device['actions']);
-            $curl = curl_init();
-            curl_setopt($curl, CURLOPT_URL, "http://" . $device['uri'] . "/?actions=" . json_encode($uri_actions));
-            curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-            $server_output = curl_exec($curl);
-            $actions_with_uri = json_decode($server_output, true);
-            foreach ($actions_with_uri as $val) {
-                $action_id = null;
-                foreach ($device['actions'] as $id=>$uri) {
-                    if ($uri == $val["uri"]) {
-                        $action_id = $id;
-                        break;
+        foreach ($devices_with_actions as $device_id=>$device) {
+            $actions_str = "";
+            foreach ($device['actions'] as $id=>$uri) {
+                $actions_str .= "'$id', ";
+            }
+            $actions_str = substr($actions_str, 0, -2);
+            if ($device['is_have_client']){
+                $query = "SELECT MAX(date_value) FROM current_data WHERE id IN (SELECT id FROM actions_description WHERE thing_id=$device_id)";
+                if ($res = $mysqli->query($query)) {
+                    $max_date_val=$res->fetch_all()[0][0];
+                    $res->close();
+                } else {
+                    echo $mysqli->error;
+                    $mysqli->close();
+                    return null;
+                }
+                if ($max_date_val<time()-$device['update_time']) {
+                    foreach ($device['actions'] as $id=>$uri){
+                        $actions_with_id[]=array("id"=>$id,"value"=>"устройство не доступно");
                     }
                 }
-                $actions_with_id[] = array("id" => $action_id, "value" => $val['value']);
+                else {
+                    $query = "SELECT id,action_value FROM current_data WHERE id IN ($actions_str)";
+                    if ($res = $mysqli->query($query)) {
+                        $actions_data = $res->fetch_all(MYSQLI_ASSOC);
+                        $res->close();
+                    } else {
+                        echo $mysqli->error;
+                        $mysqli->close();
+                        return null;
+                    }
+                    foreach ($actions_data as $line) {
+                        $actions_with_id[] = array("id" => $line['id'], "value" => $line['action_value']);
+                    }
+                }
+            }
+            else {
+                $query = "SELECT MIN(date_value) FROM current_data WHERE id IN ($actions_str)";
+                if ($res = $mysqli->query($query)) {
+                    $date_value=$res->fetch_all()[0][0];
+                    $res->close();
+                } else {
+                    echo $mysqli->error;
+                    $mysqli->close();
+                    return null;
+                }
+                if ((time()-$device['update_time'])<$date_value){
+                    $query = "SELECT id,action_value FROM current_data WHERE id IN ($actions_str)";
+                    if ($res = $mysqli->query($query)) {
+                        $actions_data=$res->fetch_all(MYSQLI_ASSOC);
+                        $res->close();
+                    } else {
+                        echo $mysqli->error;
+                        $mysqli->close();
+                        return null;
+                    }
+                    foreach ($actions_data as $line){
+                        $actions_with_id[]=array("id" => $line['id'], "value" => $line['action_value']);
+                    }
+                }
+                else {
+                    $uri_actions = array_values($device['actions']);
+                    $curl = curl_init();
+                    curl_setopt($curl, CURLOPT_URL, "http://" . $device['uri'] . "/?actions=" . json_encode($uri_actions));
+                    curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+                    $server_output = curl_exec($curl);
+                    $time=time();
+                    if (curl_errno($curl)!=0||curl_getinfo($curl)['http_code']==404){
+                        $query = "UPDATE current_data SET date_value=$time,action_value='устройство не доступно' WHERE id IN ($actions_str)";
+                        if (!$mysqli->query($query)) {
+                            echo $mysqli->error;
+                            $mysqli->close();
+                            return null;
+                        }
+                        foreach ($device['actions'] as $id=>$uri) {
+                            $actions_with_id[]=array("id"=>$id,"value"=>"устройство не доступно");
+                        }
+                    }
+                    else {
+                        $actions_with_uri = json_decode($server_output, true);
+                        foreach ($actions_with_uri as $val) {
+                            $action_id = null;
+                            foreach ($device['actions'] as $id => $uri) {
+                                if ($uri == $val["uri"]) {
+                                    $action_id = $id;
+                                    break;
+                                }
+                            }
+                            $query = "UPDATE current_data SET date_value=$time,action_value='$val[value]' WHERE id=$action_id";
+                            if (!$mysqli->query($query)) {
+                                echo $mysqli->error;
+                                $mysqli->close();
+                                return null;
+                            }
+                            $actions_with_id[] = array("id" => $action_id, "value" => $val['value']);
+                        }
+                    }
+                }
             }
         }
+        $mysqli->close();
         return json_encode($actions_with_id);
     }
 
@@ -125,15 +216,16 @@ class Model_thing extends Model
             if (isset($devices_with_actions[$line['thing_id']])) {
                 $devices_with_actions[$line['thing_id']]['actions'][$line['id']]=$line['uri'];
             } else {
-                $query = "SELECT uri FROM things WHERE id=$line[thing_id]";
+                $query = "SELECT uri,is_have_client,update_time FROM things WHERE id=$line[thing_id]";
                 if ($res = $mysqli->query($query)) {
-                    $device_uri = $res->fetch_all(MYSQLI_ASSOC)[0]['uri'];
+                    $device_desc = $res->fetch_all(MYSQLI_ASSOC)[0];
                     $res->close();
                 } else {
                     echo $mysqli->error;
                     return null;
                 }
-                $devices_with_actions[$line['thing_id']] = array("uri" => $device_uri, "actions" =>
+                $devices_with_actions[$line['thing_id']] = array("uri" => $device_desc['uri'], "is_have_client"=>
+                    $device_desc['is_have_client'],"update_time"=>$device_desc['update_time'],"actions" =>
                     array($line['id']=> $line['uri']));
             }
         }
@@ -196,6 +288,32 @@ class Model_thing extends Model
     public function put($param = null)
     {
         // TODO: Implement put() method.
+        if (stripos($param,"-command")) return $this->sendCommand();
+        else return $this->putActionValues($param);
+       
+    }
+    private function putActionValues($id){
+        $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
+        if ($mysqli->connect_errno) {
+            die("Не удалось подключиться к MySQL");
+        }
+        if (!$mysqli->set_charset("utf8")) {
+            printf("Error loading character set utf8: %s\n", $mysqli->error);
+            exit();
+        }
+        $data = json_decode(file_get_contents('php://input'),true);
+        $time=time();
+        foreach ($data as $action){
+            $query = "UPDATE current_data SET date_value=$time,action_value='$action[value]' WHERE id IN (SELECT id FROM
+            actions_description WHERE thing_id=$id AND uri='$action[uri]')";
+            if (!$res = $mysqli->query($query)) {
+                echo $mysqli->error;
+                return null;
+            }
+        }
+        return "Success";
+    }
+    private function sendCommand(){
         $resp = "Error";
         $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);
         if ($mysqli->connect_errno) {
@@ -220,7 +338,7 @@ class Model_thing extends Model
                 } else {
                     echo "Can't get results from database in Model_thing->put(). Error=" . $mysqli->error;
                     $mysqli->close();
-                    return false;
+                    return null;
                 }
                 if ($format == "list") {
                     $query = "SELECT item_name FROM action_range WHERE action_id=" . $actions[$l]['id'];
@@ -230,7 +348,7 @@ class Model_thing extends Model
                     } else {
                         echo "Can't get results from database in Model_thing->put() Error=" . $mysqli->error;
                         $mysqli->close();
-                        return false;
+                        return null;
                     }
                     $is_in_list = false;
                     $count_items = count($items);
@@ -249,10 +367,10 @@ class Model_thing extends Model
                     } else {
                         echo "Can't get results from database in Model_thing->put() Error=" . $mysqli->error;
                         $mysqli->close();
-                        return false;
+                        return null;
                     }
-                    $from = $item[0]['from'] == null ? false : (+$item[0]['from']);
-                    $to = $item[0]['to'] == null ? false : (+$item[0]['to']);
+                    $from = $item[0]['range_from'] == null ? false : (+$item[0]['range_from']);
+                    $to = $item[0]['range_to'] == null ? false : (+$item[0]['range_to']);
                     if (!$from) {
                         if (+$actions[$l]['value'] > $to) return $resp;
                     } elseif (!$to) {
@@ -279,11 +397,11 @@ class Model_thing extends Model
             curl_setopt($curl, CURLOPT_POSTFIELDS, http_build_query(array("actions" => json_encode($actions_with_uri))));
             curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
             $server_output = curl_exec($curl);
-            $server_output = $server_output == "Success" ? $server_output : "Error";
+            $server_output = $server_output == "Success" ? $server_output : null;
         }
 
         return $server_output;
-    }
+}
 
     public function post($param = null)
     {

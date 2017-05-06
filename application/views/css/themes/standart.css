@@ -295,3 +295,14 @@ h2.secondDeviceName{
     padding: 5px;
     text-align: left;
 }
+.valueContainer{
+    position: relative;
+}
+.statisticButton{
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    border: 1px solid white;
+    background: brown;
+    cursor: pointer;
+}

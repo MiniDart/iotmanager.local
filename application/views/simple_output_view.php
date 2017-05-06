@@ -5,4 +5,4 @@
  * Date: 17.11.2016
  * Time: 18:37
  */
-echo $data;
+echo is_array($data)?$data['device']:$data;

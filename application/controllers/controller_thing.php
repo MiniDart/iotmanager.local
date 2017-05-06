@@ -34,26 +34,23 @@ class Controller_thing extends Controller
     }
     function get($param){
         $data=$this->model->get($param);
-        if (stripos($param, "-value")){
-            $this->view->generate("actionsdata_view.php","empty_view.php",$data);
-        }
-        else if(stripos($param,"-string")){
-            $this->view->generate("second_device_view.php","empty_view.php",$data);
+        if (stripos($param, "-value")||stripos($param,"-string")){
+            $this->view->generate("simple_output_view.php","template_empty_view.php",$data);
         }
         else {
             $this->view->generate("thing_view.php", "template_thing_view.php", $data);
         }
     }
     function put($thing_id){
-        $resp=$this->model->put($thing_id);
-        $this->view->generate("actionsdata_view.php","empty_view.php",$resp );
+        $res=$this->model->put($thing_id);
+        $this->view->generate("simple_output_view.php","template_empty_view.php",$res );
     }
     function post($thing_id){
-        $status=$this->model->post($thing_id);
-        $this->view->generate("actionsdata_view.php","empty_view.php",$status);
+        $res=$this->model->post($thing_id);
+        $this->view->generate("simple_output_view.php","template_empty_view.php",$res);
     }
     function delete($thing_id){
         $status=$this->model->delete($thing_id);
-        $this->view->generate("actionsdata_view.php","empty_view.php",$status);
+        $this->view->generate("simple_output_view.php","template_empty_view.php",$status);
     }
 }

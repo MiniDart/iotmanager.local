@@ -34,13 +34,11 @@ class Controller_allthings extends Controller
         $this->view->generate('allthings_view.php', 'template_allthings_view.php',$data);
     }
     function post(){
-        $data=$_POST['new_thing'];
-        $result=$this->model->post($data);
-        if ($result!=null) echo "Success-".$result;
-        else echo " Fail to create thing!!!";
+        $result=$this->model->post();
+        $this->view->generate("simple_output_view.php","template_empty_view.php",$result);
     }
     function put($param){
         $data=$this->model->put($param);
-        echo $data;
+        $this->view->generate("simple_output_view.php","template_empty_view.php",$data);
     }
 }
