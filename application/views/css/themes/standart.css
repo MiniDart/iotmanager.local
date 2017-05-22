@@ -34,17 +34,27 @@ font-size: 20px;
     border-right: 1px solid white;
     border-left: 1px solid white;
     border-top: 1px solid white;
-    padding: 10px 0;
+    padding: 10px 10px;
+    display: flex;
+    flex-wrap: wrap;
+    overflow: hidden;
+    height: 40px;
 }
 .deviceShortcut{
     color:rgba(192, 51, 28, 1);
+    display: block;
     font-size: 30px;
+    height: 40px;
     cursor: pointer;
     text-align: center;
     background: white;
     text-decoration: none;
     border: 2px solid black;
     padding: 0 10px;
+    margin-bottom: 10px;
+}
+.deviceShortcutContainer:hover{
+    height: auto;
 }
 .deviceShortcutExplanation{
     color: white;
@@ -291,9 +301,11 @@ h2.secondDeviceName{
     right: 0;
 
 }
+.editDeviceContainer .number{
+    text-align: left;
+}
 .changeTheme .number{
     padding: 5px;
-    text-align: left;
 }
 .valueContainer{
     position: relative;

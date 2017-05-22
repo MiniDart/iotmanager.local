@@ -9,7 +9,7 @@
 class Model_thing extends Model
 {
 
-    public function get($param = null)
+    public function get($param)
     {
         if ($param == null) die("There is no param!");
         // TODO: Implement get_data() method.
@@ -41,7 +41,7 @@ class Model_thing extends Model
             echo $mysqli->error;
             return null;
         }
-        $query = "SELECT id,thing_name,is_virtual FROM things";
+        $query = "SELECT id,thing_name,is_virtual FROM things ORDER BY id DESC";
         if ($res = $mysqli->query($query)) {
             $things = json_encode($res->fetch_all(MYSQLI_ASSOC));
             $res->close();
@@ -245,13 +245,13 @@ class Model_thing extends Model
         $query = "UPDATE things SET new_creation_line='$new_line' WHERE id=$id";
         if (!$mysqli->query($query)) {
             $mysqli->close();
-            return  "Something wrong";
+            return  null;
         }
         if (strlen($name)!=0) {
             $query = "UPDATE things SET thing_name='$name' WHERE id=$id";
             if (!$mysqli->query($query)) {
                 $mysqli->close();
-                return "Something wrong";
+                return null;
             }
         }
         $mysqli->close();
@@ -285,7 +285,7 @@ class Model_thing extends Model
         return $this->get_action($id);
     }
 
-    public function put($param = null)
+    public function put($param)
     {
         // TODO: Implement put() method.
         if (stripos($param,"-command")) return $this->sendCommand();
@@ -403,7 +403,7 @@ class Model_thing extends Model
         return $server_output;
 }
 
-    public function post($param = null)
+    public function post($param)
     {
         // TODO: Implement post() method.
         $new_line = $_POST['newLine'];
@@ -415,7 +415,7 @@ class Model_thing extends Model
         }
     }
 
-    public function delete($param = null)
+    public function delete($param)
     {
         // TODO: Implement delete() method.
         $mysqli = new mysqli(DB_HOST, DB_USER, DB_PASSWORD, DB_NAME);

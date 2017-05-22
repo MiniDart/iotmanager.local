@@ -51,9 +51,6 @@ function makeBigFirstLetter(word) {
     let l = word[0].toUpperCase();
     return l + word.substring(1);
 }
-function rankSort(a, b) {
-    return (a.rank - b.rank);
-}
 function fillActionGroups(actionGroupsIn,actionGroupsOut,deviceFrom) {
     for (let actionGroupIn of actionGroupsIn){
         let actionGroupOut={
@@ -186,18 +183,6 @@ class Item {
     }
 }
 
-class MainItem extends Item {
-    constructor(data, owner) {
-        super(data, owner);
-    }
-}
-
-class SupportItem extends Item {
-    constructor(data, owner) {
-        super(data, owner);
-    }
-}
-
 class Action {
     constructor(data, device) {
         this.device = device;
@@ -211,6 +196,14 @@ class Action {
         this.description = null;
         if ("description" in data) this.description = makeBigFirstLetter(data.description);
         this.domElement = new Map();
+        this.range = null;
+        if ("range" in data) {
+            let r = new Map();
+            for (let i = 0; i < data.range.length; i++) {
+                r.set(+data.range[i].id, new Item(data.range[i], this));
+            }
+            this.range = r;
+        }
     }
 
     draw() {
@@ -241,8 +234,6 @@ class Action {
                         selectDom.append($("<option value='" + key + "'>" + value.name + "</option>"));
                     }
                     actionDom.append(selectDom);
-                    break;
-                case "date":
                     break;
             }
         }
@@ -281,14 +272,6 @@ class SupportAction extends Action {
         super(data, device);
         this.owner=owner;
         this.isIndividual = data.isIndividual;
-        this.range = null;
-        if ("range" in data) {
-            let r = new Map();
-            for (let i = 0; i < data.range.length; i++) {
-                r.set(+data.range[i].id, new SupportItem(data.range[i], this));
-            }
-            this.range = r;
-        }
         this.active = null;
         if ("active" in data) this.active = data.active;
     }
@@ -343,14 +326,6 @@ class MainAction extends Action {
         super(data, device);
         this.owners=new Map();
         this.owners.set(owner.id,owner);
-        this.range = null;
-        if ("range" in data) {
-            let r = new Map();
-            for (let i = 0; i < data.range.length; i++) {
-                r.set(+data.range[i].id, new MainItem(data.range[i], this));
-            }
-            this.range = r;
-        }
         this.supportActions = null;
         if ("support" in data) {
             let actions = new Map();
@@ -956,8 +931,10 @@ class ActionGroup {
                                 content.append($("<div class='groupForInsert block' id='groupForInsert_" + group.id + "'>" + group.name + "</div>").on("click", (e)=> {
                                     drawManager.getDialogManager().hideDialog();
                                     let aG = this.device.activeGroup;
-                                    action.domElement.get(aG.id).remove();
-                                    action.domElement.delete(aG.id);
+                                    if (action.domElement.has(aG.id)) {
+                                        action.domElement.get(aG.id).remove();
+                                        action.domElement.delete(aG.id);
+                                    }
                                     this.domElement.find("#"+idString+action.id).remove();
                                     aG.actions.delete(action.id);
                                     action.owners.delete(aG.id);

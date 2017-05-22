@@ -21,7 +21,7 @@ class Model_allthings extends Model
             printf("Error loading character set utf8: %s\n", $mysqli->error);
             exit();
         }
-        $query="SELECT id,thing_name FROM things";
+        $query="SELECT id,thing_name FROM things ORDER BY id DESC";
         if ($res=$mysqli->query($query)){
             $data=$res->fetch_all(MYSQLI_ASSOC);
             $res->close();
@@ -124,10 +124,6 @@ class Model_allthings extends Model
         return "Success! id=".$this->thing_id;
     }
 
-    public function delete($param = null)
-    {
-        // TODO: Implement delete() method.
-    }
     private function insertActionsIntoTable(&$action_groups, &$mysqli)
     {
         $action_groups_count = count($action_groups);
@@ -139,13 +135,10 @@ class Model_allthings extends Model
                 for ($l = 0; $l < $actions_count; $l++) {
                     $action =& $actions[$l];
                     $is_supported = isset($action['support'][0]);
-                    $action_description = isset($action['description']) ? $action['description'] : null;
-                    $submit_name = null;
-                    if (isset($action['submitName'])) $submit_name = $action['submitName'];
                     $action_uri=$mysqli->real_escape_string($action['uri']);
-                    $query = "INSERT INTO actions_description(uri,thing_id,action_name,format,is_changeable,description,
-                    submit_name,is_supported) VALUES ('$action_uri',$this->thing_id,'$action[name]','$action[format]',
-                    '$action[isChangeable]','$action_description','$submit_name','$is_supported')";
+                    $query = "INSERT INTO actions_description(uri,thing_id,format,is_changeable,
+                    is_supported) VALUES ('$action_uri',$this->thing_id,'$action[format]',
+                    '$action[isChangeable]','$is_supported')";
                     if (!$mysqli->query($query)) {
                         echo $mysqli->error;
                         $mysqli->close();
@@ -185,16 +178,11 @@ class Model_allthings extends Model
                         for ($n = 0; $n < $support_actions_count; $n++) {
                             $support_action =& $support_actions[$n];
                             $is_individual = $support_action['isIndividual'] == "true" ? true : false;
-                            $support_submit_name = null;
-                            $support_action_description = isset($support_action['description']) ? $support_action['description'] : null;
-                            if (isset($support_action['submitName'])) $support_submit_name = $support_action['submitName'];
-                            $support_active = isset($support_action['active']) ? $support_action['active'] : null;
                             $support_action_uri=$mysqli->real_escape_string($support_action['uri']);
-                            $query = "INSERT INTO actions_description(uri,action_owner_id,action_name,is_changeable,format,
-                            description,submit_name,thing_id,is_individual,active) VALUES ('$support_action_uri',
-                            $action_id,'$support_action[name]','$support_action[isChangeable]','$support_action[format]',
-                            '$support_action_description','$support_submit_name',$this->thing_id,'$is_individual',
-                            '$support_active')";
+                            $query = "INSERT INTO actions_description(uri,action_owner_id,is_changeable,format,
+                            thing_id,is_individual) VALUES ('$support_action_uri',
+                            $action_id,'$support_action[isChangeable]','$support_action[format]',
+                            $this->thing_id,'$is_individual')";
                             if (!$mysqli->query($query)) {
                                 echo $mysqli->error . ", ";
                                 $mysqli->close();
